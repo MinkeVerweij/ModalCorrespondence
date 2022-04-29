@@ -107,6 +107,9 @@ getNthFresh n li = take n ([0..] \\ li)
 --     (Conjc (zipWith (\ y1 y2 -> Rc (VT (V y1)) (VT (V y2))) 
 --         (x : getNthFresh (n-1) vars) (getNthFresh (n - 1) vars ++ [y]))
 --         )
+
+
+-- hello
 boxedR :: Int -> [Int] -> Int -> (Int -> FOLFormVSAnt)
 -- boxedR 0 vars x = (\y -> Eqdotc (VT (V x)) (VT (V y))) (getFresh vars)
 boxedR 0 _ x y = (Eqdotc (VT (V x)) . VT . V) y
