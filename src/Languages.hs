@@ -27,6 +27,9 @@ dis f g = Not (Con (Not f) (Not g))
 imp :: ModForm -> ModForm -> ModForm
 imp f g = Not (Con f (Not g))
 
+biImp :: ModForm -> ModForm -> ModForm
+biImp f g = Con (imp f g) (imp g f)
+
 bot :: ModForm
 bot = Not Top
 

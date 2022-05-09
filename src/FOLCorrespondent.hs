@@ -18,7 +18,7 @@ isSqAntBxA (Ndia _ f) = isSqAntBxA f
 isSqAntBxA (ConBxA f g) = isSqAntBxA f && isSqAntBxA g
 isSqAntBxA (NotBxA (Ndia _ (NotBxA (PrpBxA _)))) = True -- Boxed atoms
 -- isSqAnt (Box f) = isBoxAt f
-isSqAntBxA _ = False -- VS
+isSqAntBxA _ = False -- S
 
 isNegativeBxA:: ModFormBxA -> Bool
 isNegativeBxA TopBxA = True
