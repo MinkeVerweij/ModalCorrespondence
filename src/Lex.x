@@ -31,6 +31,7 @@ tokens :-
 --   "<"               { \ p _ -> TokenLA                p }
 --   ">"               { \ p _ -> TokenRA                p }
  "<>"              {\ p _ -> TokenDia                       p }
+ "[]"              {\ p _ -> TokenBox                       p }
 --   "!"               { \ p _ -> TokenExclam            p }
 --   "?"               { \ p _ -> TokenQuestm            p }
   -- DEL Formulas:

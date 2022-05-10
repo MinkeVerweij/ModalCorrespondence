@@ -25,6 +25,7 @@ data Token a -- == AlexPn
 --   | TokenLA                {apn :: a}
 --   | TokenRA                {apn :: a}
     | TokenDia  {apn :: a}
+    | TokenBox  {apn :: a}
 --   | TokenExclam            {apn :: a}
 --   | TokenQuestm            {apn :: a}
   | TokenBinCon            {apn :: a}

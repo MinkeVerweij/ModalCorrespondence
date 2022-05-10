@@ -41,15 +41,15 @@ data ModFormBxA =
              | NotBxA ModFormBxA
              | ConBxA ModFormBxA ModFormBxA
             --  | Ndia N Proposition
-             | Ndia N ModFormBxA
+             | Nbox N ModFormBxA
              | TopBxA
              deriving (Eq,Ord,Show)
 
 -- diaBxA :: ModFormBxA -> ModFormBxA
 -- diaBxA f = NotBxA (BoxBxA (NotBxA f))
 
-nBox :: Int -> ModFormBxA -> ModFormBxA
-nBox n f = NotBxA (Ndia n (NotBxA f))
+nDia :: Int -> ModFormBxA -> ModFormBxA
+nDia n f = NotBxA (Nbox n (NotBxA f))
 
 disBxA :: ModFormBxA -> ModFormBxA -> ModFormBxA
 disBxA f g = NotBxA (ConBxA (NotBxA f) (NotBxA g))
@@ -112,7 +112,6 @@ getNthFresh n li = take n ([0..] \\ li)
 --         )
 
 
--- hello
 boxedR :: Int -> [Int] -> Int -> (Int -> FOLFormVSAnt)
 -- boxedR 0 vars x = (\y -> Eqdotc (VT (V x)) (VT (V y))) (getFresh vars)
 boxedR 0 _ x y = (Eqdotc (VT (V x)) . VT . V) y

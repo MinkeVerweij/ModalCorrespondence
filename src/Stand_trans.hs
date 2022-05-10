@@ -4,6 +4,7 @@ import Languages
 
 import Data.List
 import Data.Maybe
+import Data.Bifunctor
 
 -- import SQ_shape
 
@@ -68,10 +69,11 @@ varsToInts [] = []
 varsToInts [V n] = [n]
 varsToInts ((V n):xs) = n : varsToInts xs
 
-isBoxAt1 :: ModForm -> Maybe Int
-isBoxAt1 (Prp _) = Just 0
-isBoxAt1 (Box f) = plus (Just 1) (isBoxAt1 f)
-isBoxAt1 _ = Nothing 
+isBoxAt1 :: ModForm -> (Maybe Int, Maybe Int)
+isBoxAt1 (Prp k) = (Just 0, Just k)
+-- isBoxAt1 (Box f) = (plus (Just 1) (fst (isBoxAt1 f)), snd (isBoxAt1 f))
+isBoxAt1 (Box f) = Data.Bifunctor.first (plus (Just 1)) (isBoxAt1 f)
+isBoxAt1 _ = (Nothing, Nothing)
 
 
 plus :: Maybe Int -> Maybe Int -> Maybe Int
@@ -79,14 +81,37 @@ plus (Just n) (Just m) = Just (m + n)
 plus _ _ = Nothing
 
 standTrans1 :: ModForm -> Var -> [Int] -> FOLFormVSAnt
-standTrans1 (Prp k) (V x) _ = Pc k (VT (V x))
-standTrans1 Top (V x) _ = Eqdotc (VT (V x)) (VT (V x))
-standTrans1 (Con f g) (V x) li = Conjc (standTrans1 f (V x) li : [standTrans1 g (V x) (li ++ varsInFOLform (standTrans f (V x) li))])
-standTrans1 (Not (Not f)) (V x) li = standTrans1 f (V x) li
-standTrans1 (Not f) (V x) li = Negc (standTrans1 f (V x) li)
-standTrans1 (Box f) (V x) li | isJust(isBoxAt1 f) = (\y -> Forallc [V y] (boxedR (fromJust (isBoxAt1 f)) li x y)) (last (getNthFresh (fromJust (isBoxAt1 f)) li))
-                        | otherwise  =(\y -> Forallc [V y] (Impc (Rc (VT (V x)) (VT (V y))) (standTrans1 f (V y) (li ++ [y])))) (getFresh li)
+standTrans1 f (V x) li | isJust(fst (isBoxAt1 f)) = 
+    (\y -> Forallc [V y] (Impc 
+        (boxedR (fromJust (fst (isBoxAt1 f))) li x y) 
+        (Pc (fromJust (snd (isBoxAt1 f))) (VT (V y)))))  
+    (last (getNthFresh (fromJust (fst (isBoxAt1 f))) li))
+    | otherwise = standTrans2 f (V x) li-- =(\y -> Forallc [V y] (Impc (Rc (VT (V x)) (VT (V y))) (standTrans1 f (V y) (li ++ [y])))) (getFresh li)
+-- standTrans1 (Prp k) (V x) _ = Pc k (VT (V x))
 
+standTrans2 :: ModForm -> Var -> [Int] -> FOLFormVSAnt
+standTrans2 Top (V x) _ = Eqdotc (VT (V x)) (VT (V x))
+standTrans2 (Not (Not f)) (V x) li = standTrans1 f (V x) li
+standTrans2 (Not (Con (Not f) (Not g))) x vars = Disjc (standTrans1 f x vars : [standTrans1 g x 
+    (vars ++ varsInFOLform2 (standTrans1 f x vars))])
+standTrans2 (Not (Con f (Not g))) x vars = Impc (standTrans1 f x vars) (standTrans1 g x 
+    (vars ++ varsInFOLform2 (standTrans1 f x vars)))
+standTrans2 (Con f g) (V x) li = Conjc (standTrans1 f (V x) li : [standTrans1 g (V x) (li ++ varsInFOLform (standTrans f (V x) li))])
+standTrans2 (Not f) (V x) li = Negc (standTrans1 f (V x) li)
+standTrans2 (Box f) (V x) li = (\y -> Forallc [V y] (Impc (Rc (VT (V x)) (VT (V y))) (standTrans2 f (V y) (li ++ [y])))) (getFresh li)
+standTrans2 (Prp k) (V x) _ = Pc k (VT (V x))
+
+
+sT1T :: [FOLFormVSAnt]
+sT1T = [
+    -- standTrans1 (Prp 0) (V 0) [0]
+
+    -- standTrans1 (Box (Prp 0)) (V 0) [0]
+
+    standTrans1 (imp (Box (Box (Prp 0))) (Prp 0))  (V 0) [0]
+    -- standTrans1 (Box (Box (Not (Prp 0)))) (V 0) [0]
+
+    ]
 
 --- BOXAT
 
@@ -135,8 +160,8 @@ standTransBxA (NotBxA (ConBxA (NotBxA f) (NotBxA g))) x vars = Disjc (standTrans
 standTransBxA (ConBxA f g) x vars = Conjc (standTransBxA f x vars : [standTransBxA g x 
     (vars ++ varsInFOLform2 (standTransBxA f x vars))])
 
-standTransBxA (Ndia n f) (V x) vars = diamondsR n vars x f
-standTransBxA (NotBxA (Ndia n (NotBxA f))) (V x) vars = (\y -> Forallc [V y] 
+standTransBxA (NotBxA (Nbox n (NotBxA f))) (V x) vars = diamondsR n vars x f
+standTransBxA (Nbox n f) (V x) vars = (\y -> Forallc [V y] 
     (Impc (boxedR n vars x y) 
         (standTransBxA f (V y) (vars ++ getNthFresh n vars)))) (last (getNthFresh n vars))
     -- (\y -> Existsc [V y] 
@@ -148,13 +173,13 @@ standTransBxA (NotBxA f) x vars = Negc (standTransBxA f x vars)
 
 -- get BxA substitutions right away
 standTransBxAgBA :: ModFormBxA -> Var -> [Int] -> [(Int, Int -> FOLFormVSAnt)] -> (FOLFormVSAnt, [(Int, Int -> FOLFormVSAnt)])
-standTransBxAgBA (PrpBxA k) (V x) vars bxAs = standTransBxAgBA (NotBxA (Ndia 0 (NotBxA (PrpBxA k)))) (V x) vars bxAs
+standTransBxAgBA (PrpBxA k) (V x) vars bxAs = standTransBxAgBA (Nbox 0 (PrpBxA k)) (V x) vars bxAs
 -- standTransBxA (PrpBxA k) (V x) vars bxAs = (\y -> (Forallc [V y] (Impc (Eqdotc (VT (V x)) (VT (V y)) (Pc k (VT (V y))))))) (getFresh vars)
 -- standTransBxAgBA (PrpBxA k) (V x) vars bxAs = ((\y -> Forallc [V y] 
 --     (Impc (Eqdotc (VT (V x)) (VT (V y))) (Pc k (VT (V y))))) (getFresh vars), 
 --     (k, Eqdotc (VT (V x)) . VT . V) : bxAs) 
     -- standTransBxAgBA (NotBxA (Ndia 0 (NotBxA (PrpBxA k)))) (V x) vars bxAs
-standTransBxAgBA (NotBxA (Ndia n (NotBxA (PrpBxA k)))) (V x) vars bxAs = (\y -> (Forallc [V y] 
+standTransBxAgBA (Nbox n (PrpBxA k)) (V x) vars bxAs = (\y -> (Forallc [V y] 
     (Impc (boxedR n vars x y) 
         (Pc k (VT (V y)))), 
         bxAs ++ [(k, boxedR n vars x)])) (last (getNthFresh n vars))
@@ -166,7 +191,7 @@ standTransBxAgBA (ConBxA f g) x vars bxAs = (Conjc
     snd (standTransBxAgBA f x vars bxAs) ++ snd (standTransBxAgBA g x 
     (vars ++ varsInFOLform2 (fst (standTransBxAgBA f x vars bxAs))) bxAs))
 standTransBxAgBA TopBxA x _ bxAs = (Eqdotc (VT x) (VT x), bxAs)
-standTransBxAgBA (Ndia n f) (V x) vars bxAs = (diamondsR n vars x f, 
+standTransBxAgBA (NotBxA (Nbox n (NotBxA f))) (V x) vars bxAs = (diamondsR n vars x f, 
     snd (standTransBxAgBA f (V (last (getNthFresh n vars))) (vars ++ getNthFresh n vars) bxAs))
 standTransBxAgBA _ _ _ _= undefined 
     -- standTransBxAgBA f x vars bxAs
@@ -194,7 +219,7 @@ stBxT :: [FOLFormVSAnt]
 stBxT = [
     -- standTransBxAvX (impBxA (nBox 2 (PrpBxA 0)) (PrpBxA 0))
 
-    standTransBxAvX (impBxA (Ndia 2 (ConBxA (PrpBxA 0) (Ndia 1 (nBox 1 (PrpBxA 1))))) (nBox 1 (disBxA (PrpBxA 0) (PrpBxA 1))))
+    -- standTransBxAvX (impBxA (Ndia 2 (ConBxA (PrpBxA 0) (Ndia 1 (nBox 1 (PrpBxA 1))))) (nBox 1 (disBxA (PrpBxA 0) (PrpBxA 1))))
     -- standTransBxAvX (impBxA TopBxA (PrpBxA 0))
     -- standTransBxAvX (NotBxA (Ndia 0 (NotBxA (PrpBxA 0))))
     -- standTransBxAvX (impBxA (Ndia 2 (PrpBxA 0)) (Ndia 1 (PrpBxA 0)))

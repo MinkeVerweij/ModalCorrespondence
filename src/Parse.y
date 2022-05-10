@@ -34,6 +34,7 @@ import Languages
 --   '{'    { TokenSOB    _ }
 --   '}'    { TokenSCB    _ }
   '<>'    { TokenDia     _ }
+  '[]'    { TokenBox     _ }
 --   '>'    { TokenRA     _ }
 --   '!'    { TokenExclam _ }
 --   '?'    { TokenQuestm _ }
@@ -60,7 +61,9 @@ import Languages
 -- %left KNOWSTHAT KNOWSWHETHER CKNOWTHAT CKNOWWHETHER
 -- %left '[' ']'
 -- %left '<' '>'
-%left '~'
+%left '~' '<>' '[]'
+-- %left 
+
 
 %%
 
@@ -83,6 +86,7 @@ ModForm : TOP { Top }
      | 'q' {Prp 1}
      | 'r' {Prp 2}
      | '<>' ModForm {dia $2}
+     | '[]' ModForm {Box $2}
     --  | INT { PrpF (P $1) }
     --  | String KNOWSTHAT ModForm { K $1 $3 }
     --  | String KNOWSWHETHER ModForm { Kw $1 $3 }

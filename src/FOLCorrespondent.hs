@@ -14,9 +14,9 @@ isSqAntBxA (PrpBxA _) = True
 isSqAntBxA (NotBxA (NotBxA f)) = isSqAntBxA f
 -- isSqAntBxA (NotBxA (Box (Box f))) = isSqAntBxA (NotBxA f) -- ~[][] = <><>~
 -- isSqAnt (Not (Box (Not f))) = isSqAntBxA f -- ~[]~ = <>
-isSqAntBxA (Ndia _ f) = isSqAntBxA f
+isSqAntBxA (NotBxA (Nbox _ (NotBxA f))) = isSqAntBxA f
 isSqAntBxA (ConBxA f g) = isSqAntBxA f && isSqAntBxA g
-isSqAntBxA (NotBxA (Ndia _ (NotBxA (PrpBxA _)))) = True -- Boxed atoms
+isSqAntBxA (Nbox _ (PrpBxA _)) = True -- Boxed atoms
 -- isSqAnt (Box f) = isBoxAt f
 isSqAntBxA _ = False -- S
 
@@ -25,11 +25,11 @@ isNegativeBxA TopBxA = True
 isNegativeBxA (NotBxA TopBxA) = True
 isNegativeBxA (PrpBxA _) = False
 isNegativeBxA (NotBxA (PrpBxA _)) = True
-isNegativeBxA (NotBxA (Ndia _ f)) = not (isNegativeBxA f)
+isNegativeBxA (NotBxA (Nbox _ f)) = not (isNegativeBxA f)
 isNegativeBxA (NotBxA (ConBxA f g)) = neither (isNegativeBxA f) (isNegativeBxA g)
 isNegativeBxA (NotBxA (NotBxA f)) = isNegativeBxA f
 isNegativeBxA (ConBxA f g) = isNegativeBxA f && isNegativeBxA g
-isNegativeBxA (Ndia _ f) = isNegativeBxA f
+isNegativeBxA (Nbox _ f) = isNegativeBxA f
 -- isNegative (Box f) = isNegativeBx f
 
 getSqAntBxA :: ModFormBxA -> ModFormBxA -- has to been through Sq check (+ be imp)
@@ -111,20 +111,20 @@ getPullDsFOL f = Forallc (fst (pullDiamonds1 (stTrAnt f)))
     )
 
 vT :: [Int]
-vT = varsInFOLform2 (stTrAnt (impBxA (ConBxA (Ndia 2 (nBox 2 (PrpBxA 0))) (ConBxA (Ndia 1 (PrpBxA 1)) (nBox 1 (PrpBxA 2))))
-         (Ndia 1 (disBxA (PrpBxA 0) (nBox 2 (PrpBxA 1))))))
+vT = varsInFOLform2 (stTrAnt (impBxA (ConBxA (nDia 2 (Nbox 2 (PrpBxA 0))) (ConBxA (nDia 1 (PrpBxA 1)) (Nbox 1 (PrpBxA 2))))
+         (nDia 1 (disBxA (PrpBxA 0) (Nbox 2 (PrpBxA 1))))))
     
 
 tT :: [FOLFormVSAnt]
 tT = [
-        standTransBxA (getSqCsqBxA (impBxA (ConBxA (Ndia 2 (nBox 2 (PrpBxA 0))) (ConBxA (Ndia 1 (PrpBxA 1)) (nBox 1 (PrpBxA 2))))
-         (Ndia 1 (disBxA (PrpBxA 0) (nBox 2 (PrpBxA 1)))))) (V 0) vT
+        standTransBxA (getSqCsqBxA (impBxA (ConBxA (nDia 2 (Nbox 2 (PrpBxA 0))) (ConBxA (nDia 1 (PrpBxA 1)) (Nbox 1 (PrpBxA 2))))
+         (nDia 1 (disBxA (PrpBxA 0) (Nbox 2 (PrpBxA 1)))))) (V 0) vT
     ]
 
 pullDsT :: [FOLFormVSAnt]
 pullDsT = [
-    -- getPullDsFOL (impBxA (Ndia 2 (ConBxA (Ndia 1 (PrpBxA 1)) (nBox 2 (PrpBxA 0)))) (nBox 1 (PrpBxA 0)))
-    getPullDsFOL (disBxA (NotBxA (Ndia 3 (PrpBxA 0))) (Ndia 1 (PrpBxA 0)))
+    -- getPullDsFOL (impBxA (nDia 2 (ConBxA (nDia 1 (PrpBxA 1)) (Nbox 2 (PrpBxA 0)))) (Nbox 1 (PrpBxA 0)))
+    getPullDsFOL (disBxA (NotBxA (nDia 3 (PrpBxA 0))) (nDia 1 (PrpBxA 0)))
     ]
 
 instantiate1 :: FOLFormVSAnt -> [(Int, Int -> FOLFormVSAnt)] -> FOLFormVSAnt
@@ -169,7 +169,7 @@ getSubstitution k subs y = Disjc [ f y | f <- minimalInst k subs ]
 
 getSubT :: [FOLFormVSAnt]
 getSubT = [
-    getSubstitution 0 (subsAnt (impBxA (ConBxA (nBox 2 (PrpBxA 0)) (PrpBxA 0)) (Ndia 1 (PrpBxA  0)))) 3
+    getSubstitution 0 (subsAnt (impBxA (ConBxA (Nbox 2 (PrpBxA 0)) (PrpBxA 0)) (nDia 1 (PrpBxA  0)))) 3
     ]
 
 m :: [FOLFormVSAnt]
@@ -186,16 +186,16 @@ getFOLcorr f = instantiate1 (getPullDsFOL f) (subsAnt f)
 
 simSqT :: [FOLFormVSAnt]
 simSqT = [
-    -- getFOLcorr (impBxA (Ndia 2 (PrpBxA 0)) (Ndia 1 (PrpBxA 0)))
-    getFOLcorr (impBxA (ConBxA (nBox 2 (PrpBxA 0)) (PrpBxA 0)) (Ndia 1 (PrpBxA  0)))
-    -- getFOLcorr (impBxA (nBox 2 (PrpBxA 0)) (nBox 3 (PrpBxA 0)))
-    -- getFOLcorr (impBxA (PrpBxA 0) (Ndia 1 (PrpBxA 0)))
-    -- getFOLcorr (impBxA (Ndia 1 (PrpBxA 0)) (Ndia 2 (PrpBxA 0)))
-    -- getFOLcorr (impBxA (ConBxA (PrpBxA 0) (Ndia 2 (PrpBxA 0))) (Ndia 1 (PrpBxA 0)))
+    -- getFOLcorr (impBxA (nDia 2 (PrpBxA 0)) (nDia 1 (PrpBxA 0)))
+    getFOLcorr (impBxA (ConBxA (Nbox 2 (PrpBxA 0)) (PrpBxA 0)) (nDia 1 (PrpBxA  0)))
+    -- getFOLcorr (impBxA (Nbox 2 (PrpBxA 0)) (Nbox 3 (PrpBxA 0)))
+    -- getFOLcorr (impBxA (PrpBxA 0) (nDia 1 (PrpBxA 0)))
+    -- getFOLcorr (impBxA (nDia 1 (PrpBxA 0)) (nDia 2 (PrpBxA 0)))
+    -- getFOLcorr (impBxA (ConBxA (PrpBxA 0) (nDia 2 (PrpBxA 0))) (nDia 1 (PrpBxA 0)))
     -- getFOLcorr (impBxA (PrpBxA 0) (PrpBxA 1))
-    -- getFOLcorr (impBxA TopBxA (Ndia 1 (nBox 1 (PrpBxA 0))))
-    -- getFOLcorr (disBxA (NotBxA (Ndia 3 (PrpBxA 0))) (Ndia 2 (PrpBxA 0)))
-    -- getFOLcorr (impBxA (ConBxA (Ndia 2 (nBox 2 (PrpBxA 0))) (ConBxA (Ndia 1 (PrpBxA 1)) (nBox 1 (PrpBxA 2))))
-    --      (Ndia 1 (disBxA (PrpBxA 0) (nBox 2 (PrpBxA 1)))))
-    -- getFOLcorr (disBxA (disBxA (NotBxA (PrpBxA 0)) (NotBxA (Ndia 2 (PrpBxA 0)))) (Ndia 1 (PrpBxA 0)))
+    -- getFOLcorr (impBxA TopBxA (nDia 1 (Nbox 1 (PrpBxA 0))))
+    -- getFOLcorr (disBxA (NotBxA (nDia 3 (PrpBxA 0))) (nDia 2 (PrpBxA 0)))
+    -- getFOLcorr (impBxA (ConBxA (nDia 2 (Nbox 2 (PrpBxA 0))) (ConBxA (nDia 1 (PrpBxA 1)) (Nbox 1 (PrpBxA 2))))
+    --      (nDia 1 (disBxA (PrpBxA 0) (Nbox 2 (PrpBxA 1)))))
+    -- getFOLcorr (disBxA (disBxA (NotBxA (PrpBxA 0)) (NotBxA (nDia 2 (PrpBxA 0)))) (nDia 1 (PrpBxA 0)))
     ]
