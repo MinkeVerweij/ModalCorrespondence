@@ -32,4 +32,25 @@ toModBxA (Con f g) = ConBxA (toModBxA f) (toModBxA g)
 
 getBoxedn :: ModForm -> Int -> (Int, ModFormBxA)
 getBoxedn (Box f) n = getBoxedn f (n+1)
+getBoxedn (Not (Not (Box f))) n = getBoxedn f (n+1) 
 getBoxedn f n = (n, toModBxA f)
+
+boxModSimp :: ModFormBxA -> ModFormBxA
+boxModSimp (PrpBxA k) = PrpBxA k
+boxModSimp TopBxA = TopBxA
+boxModSimp (NotBxA (NotBxA f)) = f
+boxModSimp (NotBxA (Nbox n (NotBxA (NotBxA f)))) = NotBxA (Nbox n (boxModSimp f)) -- <>~
+
+boxModSimp (ConBxA TopBxA f) = boxModSimp f
+boxModSimp (ConBxA f TopBxA) = boxModSimp f
+
+boxModSimp (NotBxA (ConBxA (NotBxA (NotBxA f)) (NotBxA (NotBxA g)))) = NotBxA (ConBxA (boxModSimp f) (boxModSimp g))
+boxModSimp (NotBxA (ConBxA (NotBxA (NotBxA f)) g)) = NotBxA (ConBxA (boxModSimp f) (boxModSimp g))
+boxModSimp (NotBxA (ConBxA f (NotBxA (NotBxA g)))) = NotBxA (ConBxA (boxModSimp f) (boxModSimp g))
+
+boxModSimp (NotBxA f) = NotBxA (boxModSimp f)
+boxModSimp (ConBxA f g) = ConBxA (boxModSimp f) (boxModSimp g)
+
+boxModSimp (Nbox n (Nbox m f)) = Nbox (n+m) (boxModSimp f)
+boxModSimp (Nbox n (NotBxA (NotBxA (Nbox m f)))) = Nbox (n+m) (boxModSimp f)
+boxModSimp (Nbox n f) = Nbox n (boxModSimp f)

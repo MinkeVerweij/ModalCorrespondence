@@ -3,8 +3,236 @@ import Languages
 import SQ_shape
 import Stand_trans
 
+-- import FOLSimplify
 import Data.List
+import Data.Maybe
 
+import ModalSimplify
+import FOLSimplify
+
+isSqBxA :: ModFormBxA -> Bool
+isSqBxA TopBxA = True
+isSqBxA (NotBxA TopBxA) = True
+isSqBxA (PrpBxA _) = True -- p = T -> p
+isSqBxA (NotBxA (NotBxA f)) = isSqBxA f
+isSqBxA (NotBxA (ConBxA f g)) = 
+    isSqAntBxA f && isNegativeBxA g || -- f -> ~g
+    isSqAntBxA g && isNegativeBxA f || -- g -> ~f
+    isSqBxA (NotBxA f) && isSqBxA (NotBxA g) &&  null (props f `intersect` props g) -- ~(~f & ~g) both Sq + no shared props
+isSqBxA (ConBxA f g) = isSqBxA f && isSqBxA g
+isSqBxA (Nbox _ f) = isSqBxA f
+isSqBxA _ = False
+
+getSqBxA1 :: ModFormBxA -> Maybe FOLFormVSAnt
+getSqBxA1 f | isJust (getSqBxA f) = Just (simpFOL (fromJust (getSqBxA f)))
+            | otherwise = Nothing
+
+getSqBxA :: ModFormBxA -> Maybe FOLFormVSAnt
+getSqBxA TopBxA = Just Topc
+getSqBxA (NotBxA TopBxA) = Just (Negc Topc)
+getSqBxA (PrpBxA _) = Just (Negc Topc) -- p = T -> p
+getSqBxA (NotBxA (PrpBxA _)) = Just (Negc Topc)
+getSqBxA (NotBxA (NotBxA f)) = getSqBxA f
+getSqBxA (NotBxA (ConBxA f g)) |
+    isSqAntBxA f && isNegativeBxA g =  Just (getFOLimp f (NotBxA g))-- f -> ~g
+    | isSqAntBxA g && isNegativeBxA f =  Just (getFOLimp g (NotBxA f))-- g -> ~f
+    | isSqBxA (NotBxA f) && isSqBxA (NotBxA g) &&  null (props f `intersect` props g) = -- ~(~f & ~g) both Sq + no shared props
+            Just (getFOLdisj (NotBxA f) (NotBxA g))
+getSqBxA (ConBxA f g) | isSqBxA f && isSqBxA g = Just (getFOLconj f g)
+getSqBxA (Nbox n f) | isSqBxA f = Just (getFOLboxed n f)
+getSqBxA f | isNegativeBxA f = Just (getFOLmonoNeg f)
+            | isNegativeBxA (NotBxA f) = Just (getFOLimp TopBxA f)
+getSqBxA _ = Nothing
+
+getFOLmonoNeg :: ModFormBxA -> FOLFormVSAnt
+getFOLmonoNeg f = standTransBxAmonoNeg f (V 0) [0]
+
+getFOLimp :: ModFormBxA -> ModFormBxA -> FOLFormVSAnt -- f -> g Sq
+getFOLimp f g | length (splitOrAnt f) == 1 = getFOLcorrNegAnt f g
+            | otherwise = Conjc [getFOLcorrNegAnt fi g| fi <- splitOrAnt f]
+-- getFOLimp f g | length (splitOrAnt f) == 1 = getFOLcorr (impBxA f g)
+--             | otherwise = Conjc [getFOLcorr (impBxA fi g)| fi <- splitOrAnt f]
+
+getFOLcorrNegAnt :: ModFormBxA -> ModFormBxA -> FOLFormVSAnt
+getFOLcorrNegAnt f g | getPositiveBxA f /= f =
+                        getFOLcorr (impBxA  (getPositiveBxA f) (disBxA (NotBxA (getNegativeBxA f)) g))
+                    | otherwise = getFOLcorr (impBxA f g)
+
+getPositiveBxA :: ModFormBxA -> ModFormBxA
+getPositiveBxA f | isNegativeBxA (NotBxA f) = f
+                | isNegativeBxA f = TopBxA
+getPositiveBxA (ConBxA f g) = boxModSimp (ConBxA (getPositiveBxA f) (getPositiveBxA g))
+getPositiveBxA (Nbox n f) = boxModSimp (Nbox n (getPositiveBxA f))
+-- getPositiveBxA (PrpBxA k) = PrpBxA k
+getPositiveBxA (NotBxA (ConBxA f g)) = boxModSimp (NotBxA (ConBxA (getNegativeBxA f) (getNegativeBxA g)))
+getPositiveBxA (NotBxA (Nbox n f)) = boxModSimp (NotBxA (Nbox n (getNegativeBxA f)))
+getPositiveBxA _ = undefined
+
+posT :: [ModFormBxA]
+posT = [
+    -- getPositiveBxA (ConBxA (PrpBxA 0) (NotBxA (PrpBxA 1)))
+    -- getPositiveBxA (NotBxA (Nbox 2 (NotBxA (ConBxA (Nbox 2 (PrpBxA 0)) (NotBxA (PrpBxA 0)))))),
+    -- getNegativeBxA (NotBxA (Nbox 2 (NotBxA (ConBxA (Nbox 2 (PrpBxA 0)) (NotBxA (PrpBxA 0))))))
+    getPositiveBxA (ConBxA (PrpBxA 0) (nDia 1 (NotBxA (PrpBxA 0)))),
+    getNegativeBxA (ConBxA (PrpBxA 0) (nDia 1 (NotBxA (PrpBxA 0))))
+
+
+    ]
+
+getNegativeBxA :: ModFormBxA -> ModFormBxA
+getNegativeBxA f | isNegativeBxA f = f
+                | isNegativeBxA (NotBxA f) = TopBxA
+getNegativeBxA (ConBxA f g) = boxModSimp (ConBxA (getNegativeBxA f) (getNegativeBxA g))
+getNegativeBxA (Nbox n f) = boxModSimp (Nbox n (getNegativeBxA f))
+getNegativeBxA (NotBxA (ConBxA f g)) = boxModSimp (NotBxA (ConBxA (getPositiveBxA f) (getPositiveBxA g)))
+getNegativeBxA (NotBxA (Nbox n f)) = boxModSimp (NotBxA (Nbox n (getPositiveBxA f)))
+getNegativeBxA _ = undefined
+
+
+disAntT :: [FOLFormVSAnt]
+disAntT = [
+    -- getFOLimp (disBxA (Nbox 1 (PrpBxA 0)) (nDia 2 (PrpBxA 0))) (PrpBxA 0)
+    getFOLimp (NotBxA (ConBxA (NotBxA (Nbox 1 (PrpBxA 0))) (Nbox 2 (NotBxA (PrpBxA 0))))) (PrpBxA 0)
+    ]
+
+getFOLdisj :: ModFormBxA -> ModFormBxA -> FOLFormVSAnt -- f | g both Sq
+-- getFOLdisj f g| isJust (getSqBxA f) && isJust (getSqBxA f)  = Disjc [fromJust (getSqBxA f), fromJust (getSqBxA g)]
+getFOLdisj f g = Disjc [fromJust (getSqBxA f), fromJust (getSqBxA g)]
+
+getFOLconj :: ModFormBxA -> ModFormBxA -> FOLFormVSAnt -- f & g both Sq
+-- getFOLconj f g| isJust (getSqBxA f) && isJust (getSqBxA f)  = Conjc [fromJust (getSqBxA f), fromJust (getSqBxA g)]
+getFOLconj f g = Conjc [fromJust (getSqBxA f), fromJust (getSqBxA g)]
+
+int1 :: [Int]
+-- int1 = varsInFOLform2 (getFOLimp (nDia 1 (PrpBxA 0)) (PrpBxA 0)) \\ [0]
+int1 = getNthFresh (length (varsInFOLform2 (getFOLimp (nDia 1 (PrpBxA 0)) (PrpBxA 0))) - 1) (0 : varsInFOLform2 (getFOLimp (nDia 1 (PrpBxA 0)) (PrpBxA 0)))
+
+getSqBxAbox :: ModFormBxA -> Int -> [Int] -> FOLFormVSAnt
+getSqBxAbox TopBxA _ _ = Topc
+getSqBxAbox (NotBxA TopBxA) _ _ = Negc Topc
+getSqBxAbox (PrpBxA _) _ _ = Negc Topc -- p = T -> p
+getSqBxAbox (NotBxA (NotBxA f)) x vars = getSqBxAbox f x vars
+getSqBxAbox (NotBxA (ConBxA f g)) x vars |
+    isSqAntBxA f && isNegativeBxA g =  varsSub 
+        (getFOLimp f (NotBxA g)) 
+        (varsInFOLform2 (getFOLimp f (NotBxA g)) \\ [x])
+        (getNthFresh (length (varsInFOLform2 (getFOLimp f (NotBxA g))) - 1) vars)-- f -> ~g
+    | isSqAntBxA g && isNegativeBxA f =  varsSub 
+        (getFOLimp g (NotBxA f)) 
+        (varsInFOLform2 (getFOLimp g (NotBxA f)) \\ [x])
+        (getNthFresh (length (varsInFOLform2 (getFOLimp g (NotBxA f))) - 1) vars)-- g -> ~f
+    | isSqBxA (NotBxA f) && isSqBxA (NotBxA g) &&  null (props f `intersect` props g) = -- ~(~f & ~g) both Sq + no shared props
+            varsSub (getFOLdisj (NotBxA f) (NotBxA g))
+            (varsInFOLform2 (getFOLdisj (NotBxA f) (NotBxA g)) \\ [x])
+            (getNthFresh (length (varsInFOLform2 (getFOLdisj (NotBxA f) (NotBxA g)))) vars)
+--     | isSqAntBxA g && isNegativeBxA f =  Just (getFOLimp g (NotBxA f))-- g -> ~f
+--     | isSqBxA (NotBxA f) && isSqBxA (NotBxA g) &&  null (props f `intersect` props g) = -- ~(~f & ~g) both Sq + no shared props
+--             Just (getFOLdisj f g)
+getSqBxAbox (ConBxA f g) x vars | 
+    isSqBxA f && isSqBxA g =
+            varsSub (getFOLconj f g)
+            (varsInFOLform2 (getFOLconj f g) \\ [x])
+            (getNthFresh (length (varsInFOLform2 (getFOLconj f g))) vars)
+getSqBxAbox (Nbox n f) x vars | isSqBxA f = getFOLboxed1 n f x vars
+getSqBxAbox _ _ _= undefined
+
+
+test1 :: [FOLFormVSAnt]
+test1 = [
+    -- getSqBxAbox (Nbox 2 (impBxA (nDia 1 (PrpBxA 0)) (PrpBxA 0))) 0 [0]
+    -- getSqBxAbox (impBxA (nDia 1 (PrpBxA 0)) (PrpBxA 0)) 0 [0]
+    getSqBxAbox (impBxA (nDia 2 (PrpBxA 1)) (PrpBxA 1)) 0 [0]
+    ]
+getFOLboxed1 :: Int -> ModFormBxA -> Int -> [Int] -> FOLFormVSAnt
+getFOLboxed1 n f x vars = (\y -> Forallc [V y] 
+    (Impc (boxedR n vars x y) 
+        (varSub (getSqBxAbox f x (vars ++ getNthFresh n vars)) x y ))) (last (getNthFresh n vars))
+
+getFOLboxed :: Int -> ModFormBxA -> FOLFormVSAnt
+getFOLboxed n f = getFOLboxed1 n f 0 [0]
+-- getFOLboxed n f = (\y -> Forallc [y] (Impc (boxedR n [0] 0 y) (fromJust (getSqBxA f)))
+-- getFOLboxed n f = (\y -> Forallc (varsInFOLform2 (fromJust (getSqBxA f))) FOLFormVSAnt)
+-- getFOLboxed n f = (\fFOL -> standTransBxAvX (Nbox n fFOL)) (fromJust (getSqBxA f))
+
+-- getFOLboxed n f = (\y -> Forallc [V y] 
+--     (Impc (boxedR n [0] 0 y) 
+--         (varSub (fromJust (getSqBxA f)) 0 y ))) (last (getNthFresh n [0]))
+
+-- getFOLboxed n f = (\y -> Forallc [V y] 
+--     (Impc (boxedR n [0] 0 y) 
+--         (varSub (fromJust (getSqBxA f)) 0 y ))) (last (getNthFresh n [0]))
+-- getFOLboxed = undefined
+
+getInts :: [Var] -> [Int]
+getInts [] = []
+getInts ((V x):xs) = x : getInts xs
+
+-- map (ys !! fromJust (elemIndex y xs (xs \\ vars) FOLFormVSAnt
+
+-- map (\x -> ys !! fromJust (elemIndex x xs)) (xs \\ vars) 
+-- int :: [Int]
+-- int = map (\x -> [2] !! fromJust (elemIndex x [0,1])) ([1] \\ [0,1]) 
+
+
+varsSub :: FOLFormVSAnt -> [Int] -> [Int] -> FOLFormVSAnt
+varsSub (Rc t1 t2) x y = Rc (varsSubTerm t1 x y) (varsSubTerm t2 x y)
+varsSub (Eqdotc t1 t2) x y = Eqdotc (varsSubTerm t1 x y) (varsSubTerm t2 x y)
+varsSub (Conjc fs) x y= Conjc [varsSub f x y| f <- fs]
+varsSub (Disjc fs) x y= Disjc [varsSub f x y| f <- fs]
+varsSub (Impc f g) x y= Impc (varsSub f x y) (varsSub g x y)
+varsSub (Forallc vars f) xs ys = Forallc 
+
+    (map V (nub ((getInts vars \\ xs) ++ map (\x -> ys !! fromJust (elemIndex x xs)) (xs \\(xs \\ getInts vars)))))
+    -- (map V ((getInts vars \\ xs) ++ ys))
+    (varsSub f xs ys)
+varsSub (Existsc vars f) xs ys = Existsc 
+    (map V (nub ((getInts vars \\ xs) ++ map (\x -> ys !! fromJust (elemIndex x xs)) (xs \\ (xs \\ getInts vars)))))
+    (varsSub f xs ys)
+varsSub (Negc f) x y = Negc (varsSub f x y)
+varsSub Topc _ _ = Topc
+varsSub (Pc k t) x y = Pc k (varsSubTerm t x y)
+
+
+-- (map V (nub ((getInts [V 0] \\ ([0] \\ [0])) ++ map (\x ->  !! fromJust (elemIndex x xs)) (xs \\ getInts vars))))
+-- V x `elem` vars = Forallc (V y :(vars \\ [V x])) (varSub f x y)
+--                             | otherwise = Forallc vars (varSub f x y)
+-- varSub (Existsc vars f) x y | V x `elem` vars = Existsc (V y :(vars \\ [V x])) (varSub f x y)
+--                             | otherwise = Existsc vars (varSub f x y)
+-- varSub (Negc f) x y = Negc (varSub f x y)
+-- varSub Topc _ _ = Topc
+-- varSub (Pc k t) x y = Pc k (varSubTerm t x y)
+
+varsSubTerm :: Term -> [Int] -> [Int] -> Term
+varsSubTerm (VT (V i)) xs ys | i `elem` xs = VT (V (ys !! fromJust (elemIndex i xs)))
+                            | otherwise = VT (V i)
+varsSubTerm t _ _= t
+
+varSub :: FOLFormVSAnt -> Int -> Int -> FOLFormVSAnt --replace x by y
+varSub (Rc t1 t2) x y = Rc (varSubTerm t1 x y) (varSubTerm t2 x y)
+varSub (Eqdotc t1 t2) x y = Eqdotc (varSubTerm t1 x y) (varSubTerm t2 x y)
+varSub (Conjc fs) x y= Conjc [varSub f x y| f <- fs]
+varSub (Disjc fs) x y= Disjc [varSub f x y| f <- fs]
+varSub (Impc f g) x y= Impc (varSub f x y) (varSub g x y)
+varSub (Forallc vars f) x y | V x `elem` vars = Forallc (V y :(vars \\ [V x])) (varSub f x y)
+                            | otherwise = Forallc vars (varSub f x y)
+varSub (Existsc vars f) x y | V x `elem` vars = Existsc (V y :(vars \\ [V x])) (varSub f x y)
+                            | otherwise = Existsc vars (varSub f x y)
+varSub (Negc f) x y = Negc (varSub f x y)
+varSub Topc _ _ = Topc
+varSub (Pc k t) x y = Pc k (varSubTerm t x y)
+
+varSubTerm :: Term -> Int -> Int -> Term
+varSubTerm (VT (V i)) x y | i == x = VT (V y)
+                            | otherwise = VT (V i)
+varSubTerm t _ _= t
+
+
+props :: ModFormBxA -> [Int]
+props (PrpBxA k) = [k]
+props (ConBxA f g) = props f ++ props g
+props (NotBxA f) = props f
+props (Nbox _ f) = props f
+props _ = []
 
 
 isSqAntBxA :: ModFormBxA -> Bool
@@ -15,16 +243,87 @@ isSqAntBxA (NotBxA (NotBxA f)) = isSqAntBxA f
 -- isSqAntBxA (NotBxA (Box (Box f))) = isSqAntBxA (NotBxA f) -- ~[][] = <><>~
 -- isSqAnt (Not (Box (Not f))) = isSqAntBxA f -- ~[]~ = <>
 isSqAntBxA (NotBxA (Nbox _ (NotBxA f))) = isSqAntBxA f
+isSqAntBxA (NotBxA (Nbox _ (ConBxA f g))) = isSqAntBxA (NotBxA f) && isSqAntBxA (NotBxA g)
 isSqAntBxA (ConBxA f g) = isSqAntBxA f && isSqAntBxA g
 isSqAntBxA (Nbox _ (PrpBxA _)) = True -- Boxed atoms
+isSqAntBxA (NotBxA (ConBxA f g)) = isSqAntBxA (NotBxA f) && isSqAntBxA (NotBxA g)  -- disj
+isSqAntBxA f | isNegativeBxA f = True
+            | otherwise = False
+-- isSqAntBxA _ = False
+
+test11 :: [Bool]
+test11 = 
+    [
+        isSqAntBxA (toModBxA (modSimp (dia (dis (Box (Prp 0)) (dia (dia (Prp 0)))))))
+    ]
+
+antT  :: [Bool]
+antT = [
+    -- isSqAntBxA (NotBxA (PrpBxA 0))
+    -- isSqAntBxA (disBxA (PrpBxA 0) (NotBxA (PrpBxA 1)))
+    -- isSqAntBxA (Nbox 2 (disBxA (NotBxA (PrpBxA 0)) (NotBxA (PrpBxA 1))))
+    isSqAntBxA (toModBxA (modSimp (dia (dis (Box (Prp 0)) (dia (dia (Prp 0)))))))
+    ]
 -- isSqAnt (Box f) = isBoxAt f
-isSqAntBxA _ = False -- S
+-- isSqAntBxA _ = False -- S
+
+-- isSqAntBxA (ConBxA (nDia 2 (disBxA (PrpBxA 0) (PrpBxA 1))) (Nbox 1 (PrpBxA 0)))
+
+-- split the OR in antecedent to use ((f OR g) -> h) equiv ((f -> h) AND (g -> h))
+splitOrAnt :: ModFormBxA -> [ModFormBxA]
+-- splitOrAnt = undefined
+-- splitOrAnt (NotBxA (ConBxA (NotBxA f) (NotBxA g))) = splitOrAnt f ++ splitOrAnt g
+-- splitOrAnt (NotBxA (ConBxA (NotBxA f) (NotBxA g))) | isNegativeBxA f && isNegativeBxA g =
+--                         splitOrAnt f ++ splitOrAnt g
+splitOrAnt (NotBxA (ConBxA f g)) = splitOrAnt (NotBxA f) ++ splitOrAnt (NotBxA g)
+-- splitOrAnt (NotBxA (ConBxA f g)) | isNegativeBxA (NotBxA f) && isNegativeBxA (NotBxA g) =
+--              splitOrAnt (NotBxA f) ++ splitOrAnt (NotBxA g)
+
+-- splitOrAnt (ConBxA f g) = splitOrAnt (NotBxA f) ++ splitOrAnt (NotBxA g)
+-- splitOrAnt (NotBxA (Nbox n (ConBxA (NotBxA f) (NotBxA g)))) = map (Nbox n) (splitOrAnt (NotBxA (ConBxA (NotBxA f) (NotBxA g))))
+-- splitOrAnt (NotBxA (Nbox n (ConBxA (NotBxA f) (NotBxA g)))) = map (NotBxA . Nbox n) (splitOrAnt (NotBxA (ConBxA (NotBxA f) (NotBxA g))))
+
+splitOrAnt (NotBxA (Nbox n (ConBxA f g))) = map (NotBxA . boxJoin n) (splitOrAnt (NotBxA (ConBxA (NotBxA f) (NotBxA g))))
+splitOrAnt (NotBxA (Nbox n (NotBxA f))) =  map (NotBxA . boxJoin n . NotBxA) (splitOrAnt f)
+    --map (NotBxA . boxJoin n) (splitOrAnt (NotBxA f))
+splitOrAnt (Nbox n f) = map (boxJoin n) (splitOrAnt f)
+-- splitOrAnt (ConBxA (NotBxA f) (NotBxA g)) = map NotBxA (splitOrAnt f) ++ map NotBxA (splitOrAnt g)
+splitOrAnt (ConBxA f g) = [ConBxA f1 g1 | f1<- splitOrAnt f, g1<- splitOrAnt g]
+splitOrAnt (NotBxA (NotBxA f)) = splitOrAnt f
+splitOrAnt (NotBxA f) = map NotBxA (splitOrAnt f)
+splitOrAnt f = [f]
+
+boxJoin :: Int -> ModFormBxA -> ModFormBxA
+boxJoin n (Nbox m f) = Nbox (n+m) f
+boxJoin n (NotBxA (NotBxA f)) = boxJoin n f
+boxJoin n f = Nbox n f
+
+
+-- map (Nbox 1) [PrpBxA 0,PrpBxA 1]
+splitT :: [[ModFormBxA]]
+splitT = [
+    -- splitOrAnt (disBxA (PrpBxA 0) (PrpBxA 1)),
+        -- splitOrAnt (ConBxA (disBxA (PrpBxA 0) (PrpBxA 1)) (disBxA (PrpBxA 2) (PrpBxA 3)))
+        -- splitOrAnt (ConBxA (NotBxA (ConBxA (NotBxA (PrpBxA 0)) (NotBxA (PrpBxA 1)))) (NotBxA (ConBxA (NotBxA (PrpBxA 2)) (NotBxA (PrpBxA 3)))))
+        -- splitOrAnt (nDia 2 (disBxA (PrpBxA 0) (PrpBxA 1))) -- not input after simplification
+        -- splitOrAnt (NotBxA (Nbox 2 (ConBxA (NotBxA (PrpBxA 0)) (NotBxA (PrpBxA 1)))))
+        -- splitOrAnt (NotBxA (Nbox 2 (NotBxA (ConBxA (PrpBxA 0) (PrpBxA 1)))))
+        -- splitOrAnt (ConBxA (NotBxA (PrpBxA 0)) (NotBxA (PrpBxA 1)))
+        -- splitOrAnt (NotBxA (ConBxA (NotBxA (Nbox 1 (PrpBxA 0))) (Nbox 2 (NotBxA (PrpBxA 0)))))
+        splitOrAnt (toModBxA (modSimp (dis (dia (dia (Con (Box (Box (Prp 0))) (Not (Prp 1))))) (Prp 2))))
+        -- [toModBxA (modSimp (dis (dia (dia (Con (Box (Box (Prp 0))) (Not (Prp 1))))) (Prp 2)))]
+        -- splitOrAnt (toModBxA (modSimp (dia (dis (dia (dia (Prp 0))) (Not (Prp 1))))))
+        -- [toModBxA (modSimp (dia (dis (dia (dia (Prp 0))) (Not (Prp 1)))))]
+        -- splitOrAnt (toModBxA (modSimp (dia (dis (dia (dia (Prp 0))) (Box (Prp 1))))))
+
+        ]
 
 isNegativeBxA:: ModFormBxA -> Bool
 isNegativeBxA TopBxA = True
 isNegativeBxA (NotBxA TopBxA) = True
 isNegativeBxA (PrpBxA _) = False
 isNegativeBxA (NotBxA (PrpBxA _)) = True
+isNegativeBxA (NotBxA (Nbox _ (NotBxA f))) = isNegativeBxA f
 isNegativeBxA (NotBxA (Nbox _ f)) = not (isNegativeBxA f)
 isNegativeBxA (NotBxA (ConBxA f g)) = neither (isNegativeBxA f) (isNegativeBxA g)
 isNegativeBxA (NotBxA (NotBxA f)) = isNegativeBxA f
@@ -172,8 +471,8 @@ getSubT = [
     getSubstitution 0 (subsAnt (impBxA (ConBxA (Nbox 2 (PrpBxA 0)) (PrpBxA 0)) (nDia 1 (PrpBxA  0)))) 3
     ]
 
-m :: [FOLFormVSAnt]
-m = [bigDisj (minimalInst 0 [(0, boxedR 1 [0] 0), (1, boxedR 2 [0,1] 0), (0, boxedR 0 [0,1,2,3,4] 4)]) 8]
+m1 :: [FOLFormVSAnt]
+m1 = [bigDisj (minimalInst 0 [(0, boxedR 1 [0] 0), (1, boxedR 2 [0,1] 0), (0, boxedR 0 [0,1,2,3,4] 4)]) 8]
 -- m = Disjc (map (minimalInst 0 [(0, boxedR 1 [0] 0)]))
 
 -- getSubst :: [Int -> FOLFormVSAnt] -> (Int -> FOLFormVSAnt)
@@ -188,6 +487,8 @@ simSqT :: [FOLFormVSAnt]
 simSqT = [
     -- getFOLcorr (impBxA (nDia 2 (PrpBxA 0)) (nDia 1 (PrpBxA 0)))
     getFOLcorr (impBxA (ConBxA (Nbox 2 (PrpBxA 0)) (PrpBxA 0)) (nDia 1 (PrpBxA  0)))
+
+    -- getFOLcorr (impBxA (ConBxA (nDia 2 (disBxA (PrpBxA 0) (PrpBxA 1))) (Nbox 1 (PrpBxA 0))) (PrpBxA 0))
     -- getFOLcorr (impBxA (Nbox 2 (PrpBxA 0)) (Nbox 3 (PrpBxA 0)))
     -- getFOLcorr (impBxA (PrpBxA 0) (nDia 1 (PrpBxA 0)))
     -- getFOLcorr (impBxA (nDia 1 (PrpBxA 0)) (nDia 2 (PrpBxA 0)))
