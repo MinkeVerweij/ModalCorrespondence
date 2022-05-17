@@ -11,6 +11,8 @@ type Valuation = World -> [Proposition]
 type Relation = [(World,World)]
 data KripkeModel = KrM Universe Valuation Relation
 
+
+-- 'normal' modal formulas (primitive)
 data ModForm = Prp Proposition
              | Not ModForm
              | Con ModForm ModForm
@@ -33,20 +35,16 @@ biImp f g = Con (imp f g) (imp g f)
 bot :: ModForm
 bot = Not Top
 
+-- Modal Formulas with Boxed atoms as primitives
 type N = Int 
 
 data ModFormBxA =
-            --  Nbox N Proposition
             PrpBxA Proposition
              | NotBxA ModFormBxA
              | ConBxA ModFormBxA ModFormBxA
-            --  | Ndia N Proposition
              | Nbox N ModFormBxA
              | TopBxA
              deriving (Eq,Ord,Show)
-
--- diaBxA :: ModFormBxA -> ModFormBxA
--- diaBxA f = NotBxA (BoxBxA (NotBxA f))
 
 nDia :: Int -> ModFormBxA -> ModFormBxA
 nDia n f = NotBxA (Nbox n (NotBxA f))
@@ -61,28 +59,13 @@ botBxA :: ModFormBxA
 botBxA = NotBxA TopBxA
 
 
--- FOL 1 (2 term conjuncts + primitive)
 newtype Var = V Int deriving(Eq, Ord, Show)
 
 data Term = VT Var | C Int deriving(Eq, Ord, Show)
 
-data FOLForm = P Int Term | R Term Term | Eqdot Term Term |
-                Neg FOLForm | Conj FOLForm FOLForm |
-                Forall Var FOLForm 
-                deriving(Eq, Ord, Show)
-
-
--- | Exists Var FOLForm
-disj :: FOLForm -> FOLForm -> FOLForm
-disj f g = Neg (Conj (Neg f) (Neg g))
-
-impl :: FOLForm -> FOLForm -> FOLForm
-impl f g = Neg (Conj f (Neg g))
-
--- boxedR1 :: FOLForm -> [Int] -> (Int -> FOLForm)
--- boxedR1 (P k t) _ = Eqdot t . VT . V
--- boxedR1 (Forall  f) vars =
-
+ppTerm :: Term -> String
+ppTerm (VT (V i)) = "x_" ++ show i
+ppTerm (C i) = "c_" ++ show i
 
 -- FOL 2 (list conj. + non-primitive)
 data FOLFormVSAnt = Pc Int Term | Rc Term Term | Eqdotc Term Term |
@@ -95,72 +78,36 @@ data FOLFormVSAnt = Pc Int Term | Rc Term Term | Eqdotc Term Term |
                     Topc
                     deriving(Eq, Ord, Show)
 
+-- print FOL nicely in terminal
+ppFOLForm :: FOLFormVSAnt -> String
+ppFOLForm Topc = "T"
+ppFOLForm (Negc Topc) = "⊥"
+ppFOLForm (Pc i t) = "P_" ++ show i ++ " " ++ ppTerm t
+ppFOLForm (Rc t1 t2) = "R " ++ ppTerm t1 ++ " " ++ ppTerm t2
+ppFOLForm (Eqdotc t1 t2) = ppTerm t1 ++ " = " ++ ppTerm t2
+ppFOLForm (Negc f) = "¬" ++ ppFOLForm f
+ppFOLForm (Conjc fs) = "AND {" ++ intercalate ", " (map ppFOLForm fs) ++ "}"
+ppFOLForm (Impc f1 f2) = "(" ++ ppFOLForm f1 ++ " → " ++ ppFOLForm f2 ++ ")"
+ppFOLForm (Disjc fs) = "OR {" ++ intercalate "," (map ppFOLForm fs) ++ "}"
+ppFOLForm (Forallc [] f) = ppFOLForm f
+ppFOLForm (Forallc ((V i):xs) f) = "∀x_" ++ show i ++ " " ++ ppFOLForm (Forallc xs f)
+ppFOLForm (Existsc [] f) = ppFOLForm f
+ppFOLForm (Existsc ((V i):xs) f) = "∃x_" ++ show i ++ " " ++ ppFOLForm (Existsc xs f)
+
+-- get 1 fresh variable
 getFresh :: [Int] -> Int
 getFresh li = head ([0..] \\ li)
 
+-- get n fresh variables
 getNthFresh :: Int -> [Int] -> [Int]
 getNthFresh 0 li = [getFresh li]
 getNthFresh n li = take n ([0..] \\ li)
 
--- boxedR :: Int -> [Int] -> Int -> (Int -> FOLFormVSAnt)
--- -- boxedR 0 vars x = (\y -> Eqdotc (VT (V x)) (VT (V y))) (getFresh vars)
--- boxedR 0 _ x = Eqdotc (VT (V x)) . VT . V
--- boxedR 1 _ x = Rc (VT (V x)) . VT . V
--- boxedR n vars x = \y -> Existsc (map V (getNthFresh (n -1) vars)) 
---     (Conjc (zipWith (\ y1 y2 -> Rc (VT (V y1)) (VT (V y2))) 
---         (x : getNthFresh (n-1) vars) (getNthFresh (n - 1) vars ++ [y]))
---         )
-
-
+-- boxed R as defined in book
 boxedR :: Int -> [Int] -> Int -> (Int -> FOLFormVSAnt)
--- boxedR 0 vars x = (\y -> Eqdotc (VT (V x)) (VT (V y))) (getFresh vars)
 boxedR 0 _ x y = (Eqdotc (VT (V x)) . VT . V) y
 boxedR 1 _ x y = Rc (VT (V x))  (VT (V y))
 boxedR n vars x y = Existsc (map V (getNthFresh (n -1) vars)) 
     (Conjc (zipWith (\ y1 y2 -> Rc (VT (V y1)) (VT (V y2))) 
         (x : getNthFresh (n-1) vars) (getNthFresh (n - 1) vars ++ [y]))
         )
-
--- diamondsR :: Int -> [Int] -> Int -> ModFormBxA -> FOLFormVSAnt
--- diamondsR 0 vars _ _ = (Eqdotc (VT (V x)) . VT . V) (getFresh vars)
--- -- diamondsR n vars x f = Existsc (map V (getNthFresh n vars))
--- --     (Conjc 
--- --         (zipWith (\ y1 y2 -> Rc (VT (V y1)) (VT (V y2)))
--- --             (x : init (getNthFresh n vars)) (getNthFresh n vars) 
--- --             ++ [f (last (getNthFresh n vars))]
--- --             ))
--- diamondsR n vars x (PrpBxA k) = Existsc (map V (getNthFresh n vars))
---     (Conjc 
---         (zipWith (\ y1 y2 -> Rc (VT (V y1)) (VT (V y2)))
---             (x : init (getNthFresh n vars)) (getNthFresh n vars) 
---             ++ [(Pc k . VT . V) (last (getNthFresh n vars))]
---             ))
--- diamondsR n vars x (PrpBxA k) = Existsc (map V (getNthFresh n vars))
---     (Conjc 
---         (zipWith (\ y1 y2 -> Rc (VT (V y1)) (VT (V y2)))
---             (x : init (getNthFresh n vars)) (getNthFresh n vars) 
---             ++ [(Pc k . VT . V) (last (getNthFresh n vars))]
---             ))
--- diamondsR 1 = boxedR 1
--- diamondsR n vars x = \y -> Existsc
-
-
--- boxedR :: Int -> [Int] -> Int -> FOLFormVSAnt
--- -- boxedR 0 vars x = (\y -> Eqdotc (VT (V x)) (VT (V y))) (getFresh vars)
--- boxedR 0 vars x = (Eqdotc (VT (V x)) . VT . V) (getFresh vars)
--- boxedR 1 vars x = (Rc (VT (V x)) . VT . V) (getFresh vars)
--- boxedR n vars x = Existsc (map V (getNthFresh (n -1) vars)) 
---     (Conjc (zipWith (\ y1 y2 -> Rc (VT (V y1)) (VT (V y2))) 
---         (x : getNthFresh (n-1) vars) (getNthFresh n vars)))
-
--- boxedR n vars x = Existsc (map V (getNthFresh n vars)) (Conjc (map (\(y1, y2) -> (Rc (VT (V y1)) (VT (V y2)))) (zip (getNthFresh (n + 1) vars) (x : getNthFresh n vars))))
--- boxedR n vars x = Existsc (getNthFresh n vars) (Conjc map )
--- boxedR n vars x = Existsc (getNthFresh n vars) Conjc map (\y1 -> Rc (VT (V y1)) (. VT . V) (getNthFresh (n + 1) vars)) x : getNthFresh n vars
--- boxedR n vars = Existsc (getNthFresh n vars) Conjc map (\y1 -> (\y2 -> (Rc (VT (V y1)) (VT (V y2)))) (getNthFresh (n + 1) vars)) x : (getNthFresh n vars)
-
-boxedR_t :: [FOLFormVSAnt]
-boxedR_t = [
-    (boxedR 0 [0,1] 0) 9,
-    (boxedR 1 [0] 0) 9,
-    (boxedR 8 [0] 0) 99
-    ]

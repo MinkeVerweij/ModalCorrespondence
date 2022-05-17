@@ -10,7 +10,7 @@ ghc-options: -Wall
 
 extra-source-files:
 - README.md
-- ChangeLog.md
+# - ChangeLog.md
 
 build-tools:
   - alex
@@ -32,3 +32,12 @@ dependencies:
 
 library:
   source-dirs: src
+
+tests:
+  examples:
+    main: test/examples.hs
+    dependencies:
+      - base >= 4.8 && < 5
+      - hspec
+      - QuickCheck
+      - ModalCorrespondence

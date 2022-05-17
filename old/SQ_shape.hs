@@ -63,9 +63,7 @@ xOR True False = True
 xOR False True = True
 xOR _ _ = False
 
-neither :: Bool -> Bool -> Bool
-neither False False = True
-neither _ _ = False
+
 
 isPositive :: ModForm -> Bool
 isPositive Top = True
