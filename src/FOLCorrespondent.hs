@@ -20,7 +20,7 @@ isSqBxA (Nbox _ f) = isSqBxA f
 isSqBxA _ = False
 
 getSqBxA1 :: ModFormBxA -> Maybe FOLFormVSAnt
-getSqBxA1 f | isJust (getSqBxA f) = Just (simpFOL1 (fromJust (getSqBxA f)))
+getSqBxA1 f | isJust (getSqBxA f) = Just (simpFOL3 (fromJust (getSqBxA f)))
             | otherwise = Nothing
 
 getSqBxA :: ModFormBxA -- ^ returns Sq correspondent if any

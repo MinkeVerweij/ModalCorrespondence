@@ -28,19 +28,19 @@ simpFOL (Impc f (Negc Topc)) = simpFOL (Negc f)
 simpFOL (Impc f g) = Impc (simpFOL f) (simpFOL g)
 
 simpFOL (Forallc [] f) = simpFOL f
-simpFOL (Forallc xs f) = Forallc xs (simpFOL f)
+simpFOL (Forallc xs f) = remUnusedQuantVar (Forallc xs (simpFOL f))
 
 simpFOL (Existsc [] f) = simpFOL f
-simpFOL (Existsc xs f) = Existsc xs (simpFOL f)
+simpFOL (Existsc xs f) = remUnusedQuantVar (Existsc xs (simpFOL f))
 
 simpFOL f = f
 
 simpFOL1 :: FOLFormVSAnt -> FOLFormVSAnt
-simpFOL1 f | simpFOL f == f = f -- simpExAND f
+simpFOL1 f | simpFOL f == f = f 
             | otherwise = simpFOL1 (simpFOL f)
 
 simpExAND :: FOLFormVSAnt -> FOLFormVSAnt
-simpExAND (Existsc xs (Conjc fs)) = simpFOL2 (exANDVarEq xs fs xs)
+simpExAND (Existsc xs (Conjc fs)) = simpFOL1 (exANDVarEq xs fs xs)
 simpExAND (Forallc v f) = Forallc v (simpExAND f)
 simpExAND (Conjc fs) = Conjc (map simpExAND fs)
 simpExAND (Disjc fs) = Disjc (map simpExAND fs)
@@ -50,10 +50,14 @@ simpExAND f = f
 
 simpFOL2 :: FOLFormVSAnt -> FOLFormVSAnt
 simpFOL2 f | simpExAND f == f = f
-        | otherwise = simpFOL2 (simpExAND f)
+        | otherwise = simpFOL1 (simpExAND f)
+
+simpFOL3 :: FOLFormVSAnt -> FOLFormVSAnt
+simpFOL3 f = simpFOL2 (simpFOL1 f)
 
 remUnusedQuantVar :: FOLFormVSAnt -> FOLFormVSAnt
 remUnusedQuantVar (Existsc vars f) = Existsc (filter (`varInForm` f) vars) f
+remUnusedQuantVar (Forallc vars f) = Forallc (filter (`varInForm` f) vars) f
 remUnusedQuantVar f = f
 
 varInForm :: Var -> FOLFormVSAnt -> Bool
