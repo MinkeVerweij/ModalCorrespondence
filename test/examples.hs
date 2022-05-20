@@ -10,7 +10,6 @@ import Languages
 import ModalSimplify
 import StandTrans
 import FOLSimplify
-import FOLSimplify (getEqVar)
 
 main :: IO ()
 main = hspec $ do

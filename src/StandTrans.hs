@@ -2,7 +2,6 @@ module StandTrans where
 import Languages
 import Data.List
 
-
 -- get all used variables in FOL formula
 varsInFOLform2 :: FOLFormVSAnt  -> [Int]
 varsInFOLform2 (Pc _ t) = varsInTerm t
@@ -64,20 +63,31 @@ standTransBxAmonoNeg (NotBxA (ConBxA (NotBxA f) (NotBxA g))) x vars = Disjc (sta
     (vars ++ varsInFOLform2 (standTransBxAmonoNeg f x vars))])
 standTransBxAmonoNeg (ConBxA f g) x vars = Conjc (standTransBxAmonoNeg f x vars : [standTransBxAmonoNeg g x 
     (vars ++ varsInFOLform2 (standTransBxAmonoNeg f x vars))])
-standTransBxAmonoNeg (NotBxA (Nbox n (NotBxA f))) (V x) vars = diamondsR n vars x f
+standTransBxAmonoNeg (NotBxA (Nbox n (NotBxA f))) (V x) vars = diamondsRMonoNeg n vars x f
 standTransBxAmonoNeg (Nbox n f) (V x) vars = (\y -> Forallc [V y] 
     (Impc (boxedR n vars x y) 
         (standTransBxAmonoNeg f (V y) (vars ++ getNthFresh n vars)))) (last (getNthFresh n vars))
 standTransBxAmonoNeg TopBxA x _ = Eqdotc (VT x) (VT x)
 standTransBxAmonoNeg (NotBxA f) x vars = Negc (standTransBxAmonoNeg f x vars)
 
+diamondsRMonoNeg :: Int -> [Int] -> Int -> ModFormBxA -> FOLFormVSAnt
+diamondsRMonoNeg 0 vars x f = standTransBxAmonoNeg f (V x) vars
+diamondsRMonoNeg n vars x f = Existsc (map V (getNthFresh n vars))
+    (Conjc 
+        (zipWith (\ y1 y2 -> Rc (VT (V y1)) (VT (V y2)))
+            (x : init (getNthFresh n vars)) (getNthFresh n vars) 
+            ++ [standTransBxAmonoNeg f (V (last (getNthFresh n vars))) (vars ++ getNthFresh n vars)]
+            ))
+
 -- get BxA substitutions right away, to use in minimal instances
 standTransBxAgBA :: ModFormBxA -> Var -> [Int] -> [(Int, Int -> FOLFormVSAnt)] -> (FOLFormVSAnt, [(Int, Int -> FOLFormVSAnt)])
 standTransBxAgBA (PrpBxA k) (V x) vars bxAs = standTransBxAgBA (Nbox 0 (PrpBxA k)) (V x) vars bxAs
-standTransBxAgBA (Nbox n (PrpBxA k)) (V x) vars bxAs = (\y -> (Forallc [V y] 
+standTransBxAgBA (Nbox n (PrpBxA k)) (V x) vars bxAs = 
+    (\y -> (Forallc [V y] 
     (Impc (boxedR n vars x y) 
         (Pc k (VT (V y)))), 
-        bxAs ++ [(k, boxedR n vars x)])) (last (getNthFresh n vars))
+    -- (Topc, 
+        bxAs ++ [(k, boxedR n vars x)]) ) (last (getNthFresh n vars))
 standTransBxAgBA (NotBxA (NotBxA f)) x vars bxAs = standTransBxAgBA f x vars bxAs
 standTransBxAgBA (ConBxA f g) x vars bxAs = (Conjc 
     (fst (standTransBxAgBA f x vars bxAs) : [fst (standTransBxAgBA g x 

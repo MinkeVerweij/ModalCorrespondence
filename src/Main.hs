@@ -1,12 +1,9 @@
 module Main where
-
 import Lex
 import Parse
 import Languages
 import ModalSimplify
 import FOLCorrespondent
-
-
 
 main :: IO ()
 main = do
@@ -20,19 +17,6 @@ main = do
             Just folF -> do
               print folF
               putStrLn (ppFOLForm folF)
-
-
--- [](p-><>p)
--- <>([]p|<><>p)->p 
--- [][](<>p->p)|(<><>q->q)
--- [][]([][](<>p->p)|(<><>q->q))
--- [][]((p&q)|(<>p|<>q)->([]p&q))
--- (p&<>~p)-><>p
--- [][][][][][][][][][](<>p->p)
--- ~[][]p
--- []((<>p|<><>p)->p)
-
-printMaybe :: Show a => Maybe a -> IO ()
-printMaybe m = case m of
-  Nothing -> putStrLn "Not Sahlqvist"
-  Just x -> print x
+              
+              
+-- ~(p&<><>p)->[]p      (~p|~<><>p)->[]p       (~p->[]p)&(~<><>p->[]p)     ([]p|p)&(<><>p|[]p)   ([]p&<><>p)|([]p)|(p&<><>p)|(p|[]p)
