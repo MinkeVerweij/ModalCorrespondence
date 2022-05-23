@@ -81,12 +81,11 @@ diamondsRMonoNeg n vars x f = Existsc (map V (getNthFresh n vars))
 
 -- get BxA substitutions right away, to use in minimal instances
 standTransBxAgBA :: ModFormBxA -> Var -> [Int] -> [(Int, Int -> FOLFormVSAnt)] -> (FOLFormVSAnt, [(Int, Int -> FOLFormVSAnt)])
-standTransBxAgBA (PrpBxA k) (V x) vars bxAs = standTransBxAgBA (Nbox 0 (PrpBxA k)) (V x) vars bxAs
+standTransBxAgBA (PrpBxA k) (V x) _ bxAs = (Pc k (VT (V x)), (k, Eqdotc (VT (V x)) . VT . V) : bxAs)
 standTransBxAgBA (Nbox n (PrpBxA k)) (V x) vars bxAs = 
     (\y -> (Forallc [V y] 
     (Impc (boxedR n vars x y) 
         (Pc k (VT (V y)))), 
-    -- (Topc, 
         bxAs ++ [(k, boxedR n vars x)]) ) (last (getNthFresh n vars))
 standTransBxAgBA (NotBxA (NotBxA f)) x vars bxAs = standTransBxAgBA f x vars bxAs
 standTransBxAgBA (ConBxA f g) x vars bxAs = (Conjc 

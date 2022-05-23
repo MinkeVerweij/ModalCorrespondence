@@ -57,6 +57,11 @@ minimalInst k subs = map snd $ filter ((==k) . fst) subs
 getSubstitution :: Int -> [(Int, Int -> FOLFormVSAnt)] -> (Int -> FOLFormVSAnt)
 getSubstitution k subs y = Disjc [ f y | f <- minimalInst k subs ]
 
+-- getSubstitution 0 (getSubstitutionsFromAnt (NotBxA (ConBxA (NotBxA (Nbox 1 (NotBxA (ConBxA (PrpBxA 0) (nDia 1 (PrpBxA 0)))))) (NotBxA (PrpBxA 0))))) 10
+-- getSubstitution 0 (getSubstitutionsFromAnt (NotBxA (ConBxA (NotBxA (Nbox 1 (NotBxA (ConBxA (nDia 1 (PrpBxA 0)) (PrpBxA 0))))) (NotBxA (PrpBxA 0))))) 10
+-- (standTransAnt (NotBxA (ConBxA (NotBxA (Nbox 1 (NotBxA (ConBxA (nDia 1 (PrpBxA 0)) (PrpBxA 0))))) (NotBxA (PrpBxA 0)))))
+-- (standTransAnt (NotBxA (ConBxA (NotBxA (Nbox 1 (NotBxA (ConBxA (PrpBxA 0) (nDia 1 (PrpBxA 0)) )))) (NotBxA (PrpBxA 0)))))
+
 -- instantiate i.e. substitute predicates for minimal instances
 instantiate1 :: FOLFormVSAnt -> [(Int, Int -> FOLFormVSAnt)] -> FOLFormVSAnt
 instantiate1 (Pc k (VT (V x))) subs | not (null (minimalInst k subs)) =  getSubstitution k subs x

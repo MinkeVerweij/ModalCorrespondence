@@ -10,6 +10,7 @@ import Languages
 import ModalSimplify
 import StandTrans
 import FOLSimplify
+import Instantiation
 
 main :: IO ()
 main = hspec $ do
@@ -35,18 +36,20 @@ main = hspec $ do
       it "<><>(p | q) -> (<><>p | <><>q)" $
         length (splitOrAnt (NotBxA (Nbox 2 (ConBxA (NotBxA (PrpBxA 0)) (NotBxA (PrpBxA 1)))))) `shouldBe` 2
       it "(<><>([]p | ~q) | ~<>q) -> OR (<><>[]p, <><>~q, ~<>q) " $
-        length (splitOrAnt (toModBxA (modSimp (dis (dia (dia (dis (Box (Prp 0)) (Not (Prp 1))))) (Not (dia (Prp 1))))))) `shouldBe` 3
+        length (splitOrAnt (toModBxA (modSimp (dis (dia (dia (dis (Box (Prp 0)) (Not (Prp 0))))) (Not (dia (Prp 1))))))) `shouldBe` 3
       it "~(p&q) == ~p | ~q " $
         length (splitOrAnt (toModBxA (modSimp (Not (Con (Prp 0) (Prp 1)))))) `shouldBe` 2
+      it "<>((p&<>p)|~q)" $
+        length (splitOrAnt (toModBxA (modSimp (dia (dis (Con (Prp 0) (dia (Prp 0))) (Not (Prp 1))))))) `shouldBe` 2
 
     describe "get used variables in FOL form " $ do
       it "6 box/dia (in antecedent) -> 7 variables" $
-        sort (varsInFOLform2 (stTrAnt (impBxA (ConBxA (nDia 2 (Nbox 2 (PrpBxA 0))) (ConBxA (nDia 1 (PrpBxA 1)) (Nbox 1 (PrpBxA 2))))
+        sort (varsInFOLform2 (standTransAnt (impBxA (ConBxA (nDia 2 (Nbox 2 (PrpBxA 0))) (ConBxA (nDia 1 (PrpBxA 1)) (Nbox 1 (PrpBxA 2))))
          (nDia 1 (disBxA (PrpBxA 0) (Nbox 2 (PrpBxA 1))))))) `shouldBe` [0..6]
 
     describe "get substitution of predicate, disj. of when occurs as(boxed) atom in antecedent" $ do
       it "P0 occurs 2 times in antecedent" $
-        elemsInDisj (getSubstitution 0 (subsAnt (impBxA (ConBxA (Nbox 2 (PrpBxA 0)) (PrpBxA 0)) (nDia 1 (PrpBxA  0)))) 3) `shouldBe` 2
+        elemsInDisj (getSubstitution 0 (getSubstitutionsFromAnt (impBxA (ConBxA (Nbox 2 (PrpBxA 0)) (PrpBxA 0)) (nDia 1 (PrpBxA  0)))) 3) `shouldBe` 2
 
     describe "simplifying Exists Vi Conj [Vi = Vj, ...]"  $ do
       it "in: 2 [Rx1x2, x1=x2], out: (Just) 1" $ getEqVar 2 [Rc (VT (V 1)) (VT (V 2)), Eqdotc (VT (V 1)) (VT (V 2))] `shouldBe` Just 1

@@ -12,6 +12,8 @@ main = do
         Left p -> error $ "error at " ++ show p
         Right f -> do
           print f
+          -- case getPullDsFOL (toModBxA (modSimp f)) of
+          --   f1 -> print f1
           case getSqBxA1 (toModBxA (modSimp f)) of
             Nothing -> putStrLn "Not Sahlqvist."
             Just folF -> do
@@ -20,3 +22,4 @@ main = do
               
               
 -- ~(p&<><>p)->[]p      (~p|~<><>p)->[]p       (~p->[]p)&(~<><>p->[]p)     ([]p|p)&(<><>p|[]p)   ([]p&<><>p)|([]p)|(p&<><>p)|(p|[]p)
+-- ([]p|<>(p&<>p)|~[]q)->p   ([]p|<>((p&<>p)|~q))->p

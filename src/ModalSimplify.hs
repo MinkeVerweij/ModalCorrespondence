@@ -19,6 +19,7 @@ modSimp (Box f) = Box (modSimp f)
 
 -- transform normal to boxed atom primitive
 toModBxA :: ModForm -> ModFormBxA
+toModBxA (Not (Not f)) = toModBxA f
 toModBxA (Box f) = uncurry Nbox (getBoxedn f 1)
 toModBxA (Prp k) = PrpBxA k
 toModBxA Top = TopBxA

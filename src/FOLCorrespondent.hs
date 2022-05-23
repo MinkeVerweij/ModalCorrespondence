@@ -17,7 +17,7 @@ getSqBxA1 :: ModFormBxA -> Maybe FOLFormVSAnt
 getSqBxA1 f | isJust (getSqBxA f) = Just (simpFOL3 (fromJust (getSqBxA f)))
             | otherwise = Nothing
 
-getSqBxA :: ModFormBxA -- ^ returns Sq correspondent if any
+getSqBxA :: ModFormBxA -- returns Sq correspondent if any
   -> Maybe FOLFormVSAnt
 getSqBxA TopBxA = Just Topc
 getSqBxA (NotBxA TopBxA) = Just (Negc Topc)
@@ -87,13 +87,17 @@ getNegativeBxA _ = undefined
 -- split the OR in antecedent to use ((f OR g) -> h) equiv ((f -> h) AND (g -> h))
 splitOrAnt :: ModFormBxA -> [ModFormBxA]
 splitOrAnt (NotBxA (ConBxA f g)) = splitOrAnt (NotBxA f) ++ splitOrAnt (NotBxA g)
-splitOrAnt (NotBxA (Nbox n (ConBxA f g))) = map (NotBxA . boxJoin n) (splitOrAnt (NotBxA (ConBxA (NotBxA f) (NotBxA g))))
+-- splitOrAnt (NotBxA (Nbox n (ConBxA f g))) = map (NotBxA . boxJoin n) (splitOrAnt (NotBxA (ConBxA (NotBxA f) (NotBxA g))))
+splitOrAnt (NotBxA (Nbox n (ConBxA f g))) = map (NotBxA . boxJoin n . NotBxA) (splitOrAnt (NotBxA (ConBxA f g)))
 splitOrAnt (NotBxA (Nbox n (NotBxA f))) =  map (NotBxA . boxJoin n . NotBxA) (splitOrAnt f)
 splitOrAnt (Nbox n f) = map (boxJoin n) (splitOrAnt f)
 splitOrAnt (ConBxA f g) = [ConBxA f1 g1 | f1<- splitOrAnt f, g1<- splitOrAnt g]
 splitOrAnt (NotBxA (NotBxA f)) = splitOrAnt f
 splitOrAnt (NotBxA f) = map NotBxA (splitOrAnt f)
 splitOrAnt f = [f]
+
+-- (splitOrAnt (toModBxA (modSimp (dia (dis (Con (Prp 0) (dia (Prp 0))) (Not (Prp 1)))))))
+
 
 -- ensure boxed atoms are joined (i.e. Nbox n (Nbox k _) does NOT occur)
 boxJoin :: Int -> ModFormBxA -> ModFormBxA
