@@ -31,15 +31,16 @@ getSqBxA (NotBxA (ConBxA f g)) |
             Just (getFOLdisj (NotBxA f) (NotBxA g))
 getSqBxA (ConBxA f g) | isSqBxA f && isSqBxA g = Just (getFOLconj f g)
 getSqBxA (Nbox n f) | isSqBxA f = Just (getFOLboxed n f)
-getSqBxA f | isNegativeBxA f = Just (getFOLmonoNeg f)
-            | isNegativeBxA (NotBxA f) = Just (getFOLimp TopBxA f)
+getSqBxA f | isSqAntBxA (NotBxA f) = Just (getFOLimp (NotBxA f) (NotBxA TopBxA))
+-- getSqBxA f | isNegativeBxA f = Just (getFOLmonoNeg f)
+--             | isNegativeBxA (NotBxA f) = Just (getFOLimp TopBxA f)
 getSqBxA _ = Nothing
 
 -- isSqBxA (toModBxA (Not (Con (Prp 0) (Not (Box (Not (Prp 0)))))))
 
 -- special case negative monotonic formulas (subst Px for x=x)
-getFOLmonoNeg :: ModFormBxA -> FOLFormVSAnt
-getFOLmonoNeg f = standTransBxAmonoNeg f (V 0) [0]
+-- getFOLmonoNeg :: ModFormBxA -> FOLFormVSAnt
+-- getFOLmonoNeg f = standTransBxAmonoNeg f (V 0) [0]
 
 {- 
     functions to get FOL corr. of implication 
@@ -176,8 +177,9 @@ getSqBxAbox (ConBxA f g) x vars |
             (getNthFresh (length (varsInFOLform2 (getFOLconj f g))) vars)
             (getFOLconj f g)
 getSqBxAbox (Nbox n f) x vars | isSqBxA f = getFOLboxed1 n f x vars
-getSqBxAbox f _ _| isNegativeBxA f = getFOLmonoNeg f
-            | isNegativeBxA (NotBxA f) = getFOLimp TopBxA f
+getSqBxAbox f _ _ | isSqAntBxA (NotBxA f) =  getFOLimp (NotBxA f) (NotBxA TopBxA)
+-- getSqBxAbox f _ _| isNegativeBxA f = getFOLmonoNeg f
+--             | isNegativeBxA (NotBxA f) = getFOLimp TopBxA f
 getSqBxAbox _ _ _= undefined
 
 -- with Boxed At translation

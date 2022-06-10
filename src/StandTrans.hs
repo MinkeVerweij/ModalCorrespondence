@@ -55,29 +55,30 @@ diamondsR n vars x f = Existsc (map V (getNthFresh n vars))
 standTransBxAvX :: ModFormBxA -> FOLFormVSAnt 
 standTransBxAvX f = standTransBxA f (V 0) [0]
 
--- special instance FOL corr.: substituting Px for x=x immediately (case of uniformly negative formula)
-standTransBxAmonoNeg :: ModFormBxA -> Var -> [Int] -> FOLFormVSAnt
-standTransBxAmonoNeg (PrpBxA _) x _ = Eqdotc (VT x) (VT x)
-standTransBxAmonoNeg (NotBxA (NotBxA f)) x vars = standTransBxAmonoNeg f x vars
-standTransBxAmonoNeg (NotBxA (ConBxA (NotBxA f) (NotBxA g))) x vars = Disjc (standTransBxAmonoNeg f x vars : [standTransBxAmonoNeg g x 
-    (vars ++ varsInFOLform2 (standTransBxAmonoNeg f x vars))])
-standTransBxAmonoNeg (ConBxA f g) x vars = Conjc (standTransBxAmonoNeg f x vars : [standTransBxAmonoNeg g x 
-    (vars ++ varsInFOLform2 (standTransBxAmonoNeg f x vars))])
-standTransBxAmonoNeg (NotBxA (Nbox n (NotBxA f))) (V x) vars = diamondsRMonoNeg n vars x f
-standTransBxAmonoNeg (Nbox n f) (V x) vars = (\y -> Forallc [V y] 
-    (Impc (boxedR n vars x y) 
-        (standTransBxAmonoNeg f (V y) (vars ++ getNthFresh n vars)))) (last (getNthFresh n vars))
-standTransBxAmonoNeg TopBxA x _ = Eqdotc (VT x) (VT x)
-standTransBxAmonoNeg (NotBxA f) x vars = Negc (standTransBxAmonoNeg f x vars)
 
-diamondsRMonoNeg :: Int -> [Int] -> Int -> ModFormBxA -> FOLFormVSAnt
-diamondsRMonoNeg 0 vars x f = standTransBxAmonoNeg f (V x) vars
-diamondsRMonoNeg n vars x f = Existsc (map V (getNthFresh n vars))
-    (Conjc 
-        (zipWith (\ y1 y2 -> Rc (VT (V y1)) (VT (V y2)))
-            (x : init (getNthFresh n vars)) (getNthFresh n vars) 
-            ++ [standTransBxAmonoNeg f (V (last (getNthFresh n vars))) (vars ++ getNthFresh n vars)]
-            ))
+-- -- special instance FOL corr.: substituting Px for x=x immediately (case of uniformly negative formula)
+-- standTransBxAmonoNeg :: ModFormBxA -> Var -> [Int] -> FOLFormVSAnt
+-- standTransBxAmonoNeg (PrpBxA _) x _ = Eqdotc (VT x) (VT x)
+-- standTransBxAmonoNeg (NotBxA (NotBxA f)) x vars = standTransBxAmonoNeg f x vars
+-- standTransBxAmonoNeg (NotBxA (ConBxA (NotBxA f) (NotBxA g))) x vars = Disjc (standTransBxAmonoNeg f x vars : [standTransBxAmonoNeg g x 
+--     (vars ++ varsInFOLform2 (standTransBxAmonoNeg f x vars))])
+-- standTransBxAmonoNeg (ConBxA f g) x vars = Conjc (standTransBxAmonoNeg f x vars : [standTransBxAmonoNeg g x 
+--     (vars ++ varsInFOLform2 (standTransBxAmonoNeg f x vars))])
+-- standTransBxAmonoNeg (NotBxA (Nbox n (NotBxA f))) (V x) vars = diamondsRMonoNeg n vars x f
+-- standTransBxAmonoNeg (Nbox n f) (V x) vars = (\y -> Forallc [V y] 
+--     (Impc (boxedR n vars x y) 
+--         (standTransBxAmonoNeg f (V y) (vars ++ getNthFresh n vars)))) (last (getNthFresh n vars))
+-- standTransBxAmonoNeg TopBxA x _ = Eqdotc (VT x) (VT x)
+-- standTransBxAmonoNeg (NotBxA f) x vars = Negc (standTransBxAmonoNeg f x vars)
+
+-- diamondsRMonoNeg :: Int -> [Int] -> Int -> ModFormBxA -> FOLFormVSAnt
+-- diamondsRMonoNeg 0 vars x f = standTransBxAmonoNeg f (V x) vars
+-- diamondsRMonoNeg n vars x f = Existsc (map V (getNthFresh n vars))
+--     (Conjc 
+--         (zipWith (\ y1 y2 -> Rc (VT (V y1)) (VT (V y2)))
+--             (x : init (getNthFresh n vars)) (getNthFresh n vars) 
+--             ++ [standTransBxAmonoNeg f (V (last (getNthFresh n vars))) (vars ++ getNthFresh n vars)]
+--             ))
 
 -- get BxA substitutions right away, to use in minimal instances
 standTransBxAgBA :: ModFormBxA -> Var -> [Int] -> [(Int, Int -> FOLFormVSAnt)] -> (FOLFormVSAnt, [(Int, Int -> FOLFormVSAnt)])

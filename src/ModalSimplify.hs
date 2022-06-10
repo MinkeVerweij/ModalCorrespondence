@@ -6,6 +6,11 @@ import Languages
 modSimp :: ModForm -> ModForm -- eliminate double neg: ~~f = f 
 modSimp (Prp k) = Prp k
 modSimp Top = Top
+modSimp (Con Top f) = modSimp f
+modSimp (Con f Top) = modSimp f
+modSimp (Con (Not Top) _) = Not Top
+modSimp (Con _ (Not Top)) = Not Top
+
 modSimp (Not (Not f)) = f
 modSimp (Not (Box (Not (Not f)))) = Not (Box (modSimp f)) -- <>~
 

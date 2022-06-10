@@ -19,12 +19,12 @@ simpFOL (Conjc []) = Topc
 simpFOL (Conjc [f]) = simpFOL f
 simpFOL (Conjc fs) | Negc Topc `elem` fs = Negc Topc
                     | Topc `elem` fs = simpFOL (Conjc (nub (fs \\ [Topc])))
-                    | otherwise = Conjc (map simpFOL (nub fs))
+                    | otherwise = Conjc (flattenCon (map simpFOL (nub fs)))
 simpFOL (Disjc []) = Negc Topc
 simpFOL (Disjc [f]) = simpFOL f
 simpFOL (Disjc fs) | Topc `elem` fs = Topc
                 | Negc Topc `elem` fs = simpFOL (Disjc (nub (fs \\ [Negc Topc])))
-                | otherwise = Disjc (map simpFOL (nub fs))
+                | otherwise = Disjc (flattenDis (map simpFOL (nub fs)))
 
 simpFOL (Impc Topc g) = simpFOL g
 simpFOL (Impc (Negc Topc) _) = Topc
@@ -44,6 +44,17 @@ simpFOL f = f
 simpFOL1 :: FOLFormVSAnt -> FOLFormVSAnt
 simpFOL1 f | simpFOL f == f = f 
             | otherwise = simpFOL1 (simpFOL f)
+
+flattenCon :: [FOLFormVSAnt] -> [FOLFormVSAnt]
+flattenCon [] = []
+flattenCon (Conjc fs:gs) = fs ++ flattenCon gs
+flattenCon (f:fs) = f : flattenCon fs
+
+flattenDis :: [FOLFormVSAnt] -> [FOLFormVSAnt]
+flattenDis [] = []
+flattenDis (Disjc fs:gs) = fs ++ flattenDis gs
+flattenDis (f:fs) = f : flattenDis fs
+
 
 -- instantiate possible existentials and simplify again
 simpFOL2 :: FOLFormVSAnt -> FOLFormVSAnt

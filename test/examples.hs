@@ -42,6 +42,8 @@ main = hspec $ do
       it "<>((p&<>p)|~q)" $
         length (splitOrAnt (toModBxA (modSimp (dia (dis (Con (Prp 0) (dia (Prp 0))) (Not (Prp 1))))))) `shouldBe` 2
 
+        -- splitOrAnt (toModBxA (modSimp (Not (dia (dis (Prp 0) (Prp 1))))))
+
     describe "get used variables in FOL form " $ do
       it "6 box/dia (in antecedent) -> 7 variables" $
         sort (varsInFOLform2 (standTransAnt (impBxA (ConBxA (nDia 2 (Nbox 2 (PrpBxA 0))) (ConBxA (nDia 1 (PrpBxA 1)) (Nbox 1 (PrpBxA 2))))
