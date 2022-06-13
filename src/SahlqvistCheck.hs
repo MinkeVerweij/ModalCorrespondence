@@ -1,7 +1,7 @@
 module SahlqvistCheck where
 import Languages
 import Data.List
-
+import Data.Bits
 {- 
     Functions to check whether modal formula is Sahlqvist
 -}
@@ -16,10 +16,11 @@ isSqBxA (NotBxA (ConBxA f g)) =
     &&  null (props f `intersect` props g) 
     || isNegativeBxA  (NotBxA (ConBxA  f g)) -- ~(f & g) mono. neg.
     && isSqAntBxA (ConBxA  f g)
+    || isSqAntBxA (ConBxA f g) -- (~ h -> \bot)
 isSqBxA (ConBxA f g) = isSqBxA f && isSqBxA g
 isSqBxA (Nbox _ f) = isSqBxA f
-isSqBxA f | isNegativeBxA f && isSqAntBxA (NotBxA f) = True -- monotone negative
-        | isNegativeBxA (NotBxA f) = True -- mono. pos
+isSqBxA f | isSqAntBxA (NotBxA f) = True -- (~ f -> \bot)
+        | isNegativeBxA (NotBxA f) = True -- mono. pos : T -> f
 isSqBxA _ = False
 
 isSqAntBxA :: ModFormBxA -> Bool
@@ -42,8 +43,8 @@ isNegativeBxA (NotBxA TopBxA) = True
 isNegativeBxA (PrpBxA _) = False
 isNegativeBxA (NotBxA (PrpBxA _)) = True
 isNegativeBxA (NotBxA (Nbox _ (NotBxA f))) = isNegativeBxA f
-isNegativeBxA (NotBxA (Nbox _ f)) = not (isNegativeBxA f)
-isNegativeBxA (NotBxA (ConBxA f g)) = neither (isNegativeBxA f) (isNegativeBxA g)
+isNegativeBxA (NotBxA (Nbox _ f)) = isNegativeBxA (NotBxA f)
+isNegativeBxA (NotBxA (ConBxA f g)) = neither (isNegativeBxA f) (isNegativeBxA g) && isUniform f && isUniform g
 isNegativeBxA (NotBxA (NotBxA f)) = isNegativeBxA f
 isNegativeBxA (ConBxA f g) = isNegativeBxA f && isNegativeBxA g
 isNegativeBxA (Nbox _ f) = isNegativeBxA f
@@ -51,6 +52,25 @@ isNegativeBxA (Nbox _ f) = isNegativeBxA f
 neither :: Bool -> Bool -> Bool
 neither False False = True
 neither _ _ = False
+
+isUniform:: ModFormBxA -> Bool
+isUniform f = all  (`propUniform` f) (nub (props f))
+
+propUniform :: Int -> ModFormBxA -> Bool
+propUniform k f = propPosNeg  k f True || propPosNeg  k f False
+
+-- if Prp k occurs pos in f: propPosNeg k f True --> True
+-- if Prp k occurs neg in f: propPosNeg k f False --> True
+propPosNeg :: Int -> ModFormBxA -> Bool -> Bool
+propPosNeg  _ TopBxA _ = True
+propPosNeg  _ (PrpBxA _) c = c
+propPosNeg  k (NotBxA f) c | k `elem` props f =  propPosNeg  k f (c `xor` True)
+                            | otherwise = c
+propPosNeg  k (ConBxA f g) c | k `elem` props f && k `elem` props g = propPosNeg  k f c && propPosNeg  k g c
+        | k `elem` props f = propPosNeg k f c
+        | k `elem` props g = propPosNeg k g c
+        | otherwise = c
+propPosNeg  k (Nbox _ f) c = propPosNeg  k f c
 
 -- get propositions from Modal Formula (for disj. Sq formulas)
 props :: ModFormBxA -> [Int]

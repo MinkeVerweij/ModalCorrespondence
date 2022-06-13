@@ -11,14 +11,25 @@ import ModalSimplify
 import StandTrans
 import FOLSimplify
 import Instantiation
+import SahlqvistCheck
 
 main :: IO ()
 main = hspec $ do
+  describe "determining whether form pos/neg" $ do
+      it "(q & (p & ~[]p)) neg" $ isNegativeBxA (ConBxA (PrpBxA 1) (ConBxA (PrpBxA 0) (nDia 1 (NotBxA (PrpBxA 0))))) `shouldBe` False
+      it "(q & (p & ~[]p)) pos" $ isNegativeBxA (NotBxA (ConBxA (PrpBxA 1) (ConBxA (PrpBxA 0) (nDia 1 (NotBxA (PrpBxA 0)))))) `shouldBe` False
+      it "(p & ~[]p) neg " $ isNegativeBxA (ConBxA (PrpBxA 0) (nDia 1 (NotBxA (PrpBxA 0)))) `shouldBe` False
+      it "(p & ~[]p) pos" $ isNegativeBxA (NotBxA (ConBxA (PrpBxA 0) (nDia 1 (NotBxA (PrpBxA 0))))) `shouldBe` False
+
+      
+    
   describe "getting the pos/neg conjuncts (normal sq)" $ do
     describe "getPositiveBxA" $ do
-      it "p & <>!p" $ getPositiveBxA (ConBxA (PrpBxA 0) (nDia 1 (NotBxA (PrpBxA 0)))) `shouldBe` PrpBxA 0
-    it "getNegativeBxA" $
-      getNegativeBxA (ConBxA (PrpBxA 0) (nDia 1 (NotBxA (PrpBxA 0)))) `shouldBe` NotBxA (Nbox 1 (PrpBxA 0))
+      it "p & <>~p" $ getPositiveBxA (ConBxA (PrpBxA 0) (nDia 1 (NotBxA (PrpBxA 0)))) `shouldBe` PrpBxA 0
+      it "(q & (p & ~[]p))" $ getPositiveBxA (ConBxA (PrpBxA 1) (ConBxA (PrpBxA 0) (nDia 1 (NotBxA (PrpBxA 0))))) `shouldBe` ConBxA (PrpBxA 1) (PrpBxA 0)
+    describe "getNegativeBxA" $ do
+      it "p & <>~p" $ getNegativeBxA (ConBxA (PrpBxA 0) (nDia 1 (NotBxA (PrpBxA 0)))) `shouldBe` NotBxA (Nbox 1 (PrpBxA 0))
+      it "(q & (p & ~[]p))" $ getNegativeBxA (ConBxA (PrpBxA 1) (ConBxA (PrpBxA 0) (nDia 1 (NotBxA (PrpBxA 0))))) `shouldBe` NotBxA (Nbox 1 (PrpBxA 0))
 
     it "disjunct in antecedent gives conjunction of implications" $  -- 
       mainOperatorFOL (getFOLimp (NotBxA (ConBxA (NotBxA (Nbox 1 (PrpBxA 0))) (Nbox 2 (NotBxA (PrpBxA 0))))) (PrpBxA 0))

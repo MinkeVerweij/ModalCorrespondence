@@ -7,6 +7,9 @@ import Data.GraphViz.Types.Generalised
 import Languages
 import Data.Bits
 
+-- NEED ADDITIONAL FUNCTIONS IF MAIN OPERATOR IS CONJ/DISJ
+
+
 -- (Forallc [V 3] (Negc (Existsc [V 1,V 2] (Conjc [Rc (VT (V 0)) (VT (V 1)),Rc (VT (V 1)) (VT (V 2)),Rc (VT (V 2)) (VT (V 3))]))))
 -- (Existsc [V 1] (Conjc [Rc (VT (V 0)) (VT (V 1)),Forallc [V 2] (Negc (Rc (VT (V 1)) (VT (V 2))))]))
 
@@ -15,7 +18,7 @@ import Data.Bits
 -- when O (ors) not 0: Or case distintion, edge different colors (new cluster for every diff O value)
 -- when Eq (equality) True: add 2 edges, equality 'node' in between, edges undirected, 'nodes' filled (no line around =)
 -- when Neg (not possible): edges are red and filled
-toClusters :: FOLFormVSAnt -> Int -> Int -> Bool -> [(([Char], [Char]), Int, Int, Bool, Bool)] -- (w_i,w_j), dotted/filled, color, eq (noDir)
+toClusters :: FOLFormVSAnt -> Int -> Int -> Bool -> [(([Char], [Char]), Int, Int, Bool, Bool)] -- (w_i,w_j), dotted/filled, color (or), eq (noDir), color (neg)
 toClusters Topc _ _ _ = undefined
 toClusters (Pc _ _) _ _ _ = undefined
 toClusters (Rc (VT (V k)) (VT (V j))) depth ors red = [(("w" ++ show k, "w" ++ show j), depth, ors, False, red)]
@@ -29,10 +32,23 @@ toClusters (Conjc (f:fs)) depth ors red = toClusters f depth ors red ++ toCluste
 toClusters (Disjc []) _ _ _ = []
 toClusters (Disjc (f:fs)) depth ors red = toClusters f depth (ors + 1) red ++ toClusters (Conjc fs) depth (ors + 2) red
 toClusters (Impc f g) depth ors red = toClusters f depth ors red ++ toClusters g (depth + 1) ors red
+toClusters (Negc (Conjc fs)) depth ors red = concat [toClusters fi depth ors red | fi <- init fs] 
+    ++ toClusters (last fs) (depth +1) ors (xor red True)
+toClusters (Negc (Existsc _ f)) depth ors red = toClusters (Negc f) depth ors red
 toClusters (Negc f) depth ors red = toClusters f depth ors (xor red True)
+
+-- flattenClus :: [[(([Char], [Char]), Int, Int, Bool, Bool)]] -> [(([Char], [Char]), Int, Int, Bool, Bool)]
+-- flattenClus = foldr (++) []
+-- -- flattenClus [] = []
+-- -- flattenClus (x:xs) = x ++ flattenClus xs
 
 toClusters1 :: FOLFormVSAnt -> [(([Char], [Char]), Int, Int, Bool, Bool)]
 toClusters1 f = toClusters f 0 0 False
 
 toGraph :: [(([Char], [Char]), Int, Int, Int)] -> DotGraph String
 toGraph = undefined
+
+-- (Existsc [V 1] (Conjc [Rc (VT (V 0)) (VT (V 1)),Forallc [V 2] (Negc (Rc (VT (V 1)) (VT (V 2))))]))
+-- (Forallc [V 2] (Impc (Existsc [V 1] (Conjc [Rc (VT (V 0)) (VT (V 1)),Rc (VT (V 1)) (VT (V 2))])) (Rc (VT (V 2)) (VT (V 2)))))
+-- (Forallc [V 3] (Negc (Existsc [V 1,V 2] (Conjc [Rc (VT (V 0)) (VT (V 1)),Rc (VT (V 1)) (VT (V 2)),Rc (VT (V 2)) (VT (V 3))]))))
+-- (Existsc [V 1] (Conjc [Rc (VT (V 0)) (VT (V 1)),Forallc [V 2] (Negc (Rc (VT (V 1)) (VT (V 2))))]))
