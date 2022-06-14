@@ -2,8 +2,8 @@ module Main (main) where
 
 import Data.List
 import Test.Hspec
-import Test.Hspec.QuickCheck
-import Test.QuickCheck (expectFailure,(===))
+-- import Test.Hspec.QuickCheck
+-- import Test.QuickCheck (expectFailure,(===))
 
 import FOLCorrespondent
 import Languages

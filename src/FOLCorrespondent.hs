@@ -13,6 +13,9 @@ getSqBxA1 :: ModFormBxA -> Maybe FOLFormVSAnt
 getSqBxA1 f | isJust (getSqBxA f) = Just (simpFOL3 (fromJust (getSqBxA f)))
             | otherwise = Nothing
 
+-- Forallc [] (Impc (Conjc []) 
+--(Negc (Conjc [Negc (Forallc [V 1] (Impc (Rc (VT (V 0)) (VT (V 1))) (Disjc [Eqdotc (VT (V 0)) (VT (V 1))]))),Forallc [V 2] (Impc (Rc (VT (V 0)) (VT (V 2))) (Negc (Disjc [Eqdotc (VT (V 0)) (VT (V 2))])))])))
+
 getSqBxA :: ModFormBxA -- returns Sq correspondent if any
   -> Maybe FOLFormVSAnt
 getSqBxA TopBxA = Just Topc
@@ -130,7 +133,10 @@ getFOLdisj :: ModFormBxA -> ModFormBxA -> FOLFormVSAnt -- f | g both Sq
 -- getFOLdisj h (NotBxA (ConBxA f g))
 --     | isSqBxA (NotBxA f) && isSqBxA (NotBxA g) &&  null (props f `intersect` props g)
 --         = getFOLdisj1 [h,f,g]
-getFOLdisj f g = Disjc [fromJust (getSqBxA f), fromJust (getSqBxA g)]
+getFOLdisj f g = Disjc [fromJust (getSqBxA f), 
+    varsSub ((varsInFOLform2 (fromJust (getSqBxA f)) `intersect` varsInFOLform2 (fromJust (getSqBxA f))) \\ [0])
+        (getNthFresh (length ((varsInFOLform2 (fromJust (getSqBxA f)) `intersect` varsInFOLform2 (fromJust (getSqBxA f)))\\[0])) (varsInFOLform2 (fromJust (getSqBxA f)) ++ varsInFOLform2 (fromJust (getSqBxA g))))
+        (fromJust (getSqBxA g))]
 -- getFOLdisj f g = Disjc (getAllDisjs f ++ getAllDisjs g)
 
 -- (<>p-><><>p)|(<>q->q)|(<>[]r->[]<>r)
@@ -151,7 +157,11 @@ getAllDisjs [] gs = gs
 -- get FO corr. of conj. of Sq formulas
 -- Same note about lists in lists
 getFOLconj :: ModFormBxA -> ModFormBxA -> FOLFormVSAnt -- f & g both Sq
-getFOLconj f g = Conjc [fromJust (getSqBxA f), fromJust (getSqBxA g)]
+-- getFOLconj f g = Conjc [fromJust (getSqBxA f), fromJust (getSqBxA g)]
+getFOLconj f g = Conjc [fromJust (getSqBxA f), 
+    varsSub ((varsInFOLform2 (fromJust (getSqBxA f)) `intersect` varsInFOLform2 (fromJust (getSqBxA f))) \\ [0])
+        (getNthFresh (length ((varsInFOLform2 (fromJust (getSqBxA f)) `intersect` varsInFOLform2 (fromJust (getSqBxA f)))\\[0])) (varsInFOLform2 (fromJust (getSqBxA f)) ++ varsInFOLform2 (fromJust (getSqBxA g))))
+        (fromJust (getSqBxA g))]
 
 {-
     functions to get FOL corr. of boxed Sq formulas 

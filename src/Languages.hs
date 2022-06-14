@@ -94,6 +94,14 @@ ppFOLForm (Forallc ((V i):xs) f) = "∀x_" ++ show i ++ " " ++ ppFOLForm (Forall
 ppFOLForm (Existsc [] f) = ppFOLForm f
 ppFOLForm (Existsc ((V i):xs) f) = "∃x_" ++ show i ++ " " ++ ppFOLForm (Existsc xs f)
 
+isConj :: FOLFormVSAnt -> Bool
+isConj (Conjc _) = True
+isConj _ = False
+
+isDisj :: FOLFormVSAnt -> Bool
+isDisj (Disjc _) = True
+isDisj _ = False
+
 -- get 1 fresh variable
 getFresh :: [Int] -> Int
 getFresh li = head ([0..] \\ li)

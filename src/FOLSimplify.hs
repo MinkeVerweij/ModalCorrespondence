@@ -8,7 +8,7 @@ import Data.Maybe
 
 -- general simplify first, then simplify 'Exists v_i (x=v_i & a(v_i))' to a(x)
 simpFOL3 :: FOLFormVSAnt -> FOLFormVSAnt
-simpFOL3 f = simpFOL2 (simpFOL1 f)
+simpFOL3 f = simpFOL5 (simpFOL2 (simpFOL1 f))
 
 -- general simplification
 simpFOL :: FOLFormVSAnt -> FOLFormVSAnt
@@ -30,6 +30,9 @@ simpFOL (Impc Topc g) = simpFOL g
 simpFOL (Impc (Negc Topc) _) = Topc
 simpFOL (Impc _ Topc) = Topc
 simpFOL (Impc f (Negc Topc)) = simpFOL (Negc f)
+
+simpFOL (Forallc vars (Impc f (Conjc gs))) = Conjc [remUnusedQuantVar (simpFOL (Forallc vars (Impc f g))) | g <- gs]
+
 simpFOL (Impc f g) = Impc (simpFOL f) (simpFOL g)
 
 simpFOL (Forallc [] f) = simpFOL f
@@ -60,6 +63,19 @@ flattenDis (f:fs) = f : flattenDis fs
 simpFOL2 :: FOLFormVSAnt -> FOLFormVSAnt
 simpFOL2 f | simpExAND f == f = f
         | otherwise = simpFOL1 (simpExAND f)
+
+simpFOL4 :: FOLFormVSAnt -> FOLFormVSAnt
+simpFOL4 (Negc (Conjc fs)) =  Disjc [simpFOL2 (simpFOL4 (simpFOL1 (Negc f)))|f<- fs]
+simpFOL4 (Negc (Impc f g)) = Conjc [simpFOL1 f, simpFOL1 (Negc g)]
+simpFOL4 (Negc (Existsc vars f)) = Forallc vars (simpFOL4 (simpFOL1 (Negc f)))
+simpFOL4 (Negc (Forallc vars f)) = Existsc vars (simpFOL4 (simpFOL1 (Negc f)))
+simpFOL4 (Conjc fs) = Conjc [simpFOL4 f | f<- fs]
+simpFOL4 (Disjc fs) = Disjc [simpFOL4 f | f<- fs]
+simpFOL4 f = f
+
+simpFOL5 :: FOLFormVSAnt -> FOLFormVSAnt
+simpFOL5 f | simpFOL4 f == f = f
+        | otherwise = simpFOL4 f
 
 {- instantiate possible existentials
     'Exists v_i (x=v_i & a(v_i))' => a(x)

@@ -42,14 +42,15 @@ density = digraph (Str "G") $ do
         "w" --> "w2"
         "w2" --> "w1"
 
--- []p->[]<>p == ∀x_1 (R x_0 x_1 → ∀x_3 (R x_0 x_3 → ∃x_4 AND {R x_3 x_4, R x_1 x_4}))
+-- <>[]p->[]<>p == ∀x_1 (R x_0 x_1 → ∀x_3 (R x_0 x_3 → ∃x_4 AND {R x_3 x_4, R x_1 x_4}))
 -- Forallc [V 1] (Impc (Rc (VT (V 0)) (VT (V 1))) (Forallc [V 3] (Impc (Rc (VT (V 0)) (VT (V 3))) (Existsc [V 4] (Conjc [Rc (VT (V 3)) (VT (V 4)),Rc (VT (V 1)) (VT (V 4))])))))
 churchRosser :: DotGraph String
 churchRosser = digraph (Str "G") $ do
     nodeAttrs [shape Circle]
-    graphAttrs [style solid, color White]
+    graphAttrs [style solid, color Black]
 
     cluster (Num (Int 0)) $ do
+        -- graphAttrs [style solid, color Yellow]
         edgeAttrs [style solid, color Black]
         "w" --> "w1"
 
