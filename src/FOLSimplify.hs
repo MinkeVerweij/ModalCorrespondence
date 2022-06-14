@@ -8,7 +8,7 @@ import Data.Maybe
 
 -- general simplify first, then simplify 'Exists v_i (x=v_i & a(v_i))' to a(x)
 simpFOL3 :: FOLFormVSAnt -> FOLFormVSAnt
-simpFOL3 f = simpFOL5 (simpFOL2 (simpFOL1 f))
+simpFOL3 f = simpFOL1 (simpFOL5 (simpFOL2 (simpFOL1 f)))
 
 -- general simplification
 simpFOL :: FOLFormVSAnt -> FOLFormVSAnt

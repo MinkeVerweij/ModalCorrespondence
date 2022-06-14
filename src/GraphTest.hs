@@ -143,6 +143,9 @@ example = digraph (Str "G") $ do
        graphAttrs [textLabel "process #1"]
 
    cluster (Num (Int 1)) $ do
+       cluster (Num (Int 2)) $ do
+           graphAttrs [textLabel "In P2", color Green]
+           "m1" --> "m1"
        nodeAttrs [style filled]
        "b0" --> "b1"
        "b1" --> "b2"
