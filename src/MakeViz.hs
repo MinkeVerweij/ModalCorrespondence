@@ -9,7 +9,7 @@ import Data.List
 import Data.GraphViz (ToGraphID(toGraphID))
 import FOLSimplify
 
-
+-- preliminary check for visualization (not too many nested clusters)
 clusterDepth :: FOLFormVSAnt -> Int -> Int
 clusterDepth (Conjc fs) n | hasforAllImp fs = (maximum [clusterDepth f n | f <- fs ]) + 1
                             | otherwise = n
@@ -21,6 +21,7 @@ clusterDepth (Existsc _ (Disjc fs)) n | hasforAllImp fs = (maximum [clusterDepth
                             | otherwise = n
 clusterDepth _ n = n
 
+-- preliminary check for visualization (not too implied ors)
 impliedOrs :: FOLFormVSAnt -> Bool
 impliedOrs (Impc _ (Disjc fs)) | length fs > 3 = True
                             | otherwise = False
@@ -31,8 +32,6 @@ impliedOrs (Disjc fs) = any impliedOrs fs
 impliedOrs (Impc _ f) = impliedOrs f
 impliedOrs _ = False
 
-
--- impliedOrs (Conjc fs) = or ((map (impliedOrs f)) fs)
 
 {-
 To make the visualisations, collect list of edges + characterstics
@@ -51,11 +50,9 @@ type EdgeList = [Edge]
 type Edge = ((String, String), Int, Int, Bool, Bool, Clust, Clust)
 type Clust = (Int, Int, [Int])
 
--- (Forallc [V 3] (Negc (Existsc [V 1,V 2] (Conjc [Rc (VT (V 0)) (VT (V 1)),Rc (VT (V 1)) (VT (V 2)),Rc (VT (V 2)) (VT (V 3))]))))
--- (Existsc [V 1] (Conjc [Rc (VT (V 0)) (VT (V 1)),Forallc [V 2] (Negc (Rc (VT (V 1)) (VT (V 2))))]))
 
 toClusters :: FOLFormVSAnt -> Int -> Int -> Bool -> Clust -> Clust -> EdgeList
-toClusters Topc _ _ _ _ _ = undefined -- MAKE EDGE CASES
+toClusters Topc _ _ _ _ _ = undefined
 toClusters (Pc _ _) _ _ _ _ _ = undefined
 toClusters (Rc (VT (V k)) (VT (V j))) depth ors red clusIn clusOut = [(("w" ++ show k, "w" ++ show j), depth, ors, False, red, clusIn, clusOut)]
 toClusters (Rc _ _) _ _ _ _ _  = undefined
@@ -68,7 +65,6 @@ toClusters (Conjc (f:fs)) depth ors red clusIn clusOut = toClusters f depth ors 
 toClusters (Disjc []) _ _ _ _ _ = []
 toClusters (Disjc (f:fs)) depth ors red clusIn clusOut | not (null (posForms (f:fs))) && not (null (negForms (f:fs))) = toClusters (simpFOL1 (Impc (Conjc (negForms (f:fs))) (Conjc (posForms (f:fs))))) depth ors red clusIn clusOut
             |otherwise = toClusters f depth (ors + 1) red clusIn clusOut ++ toClusters (Disjc fs) depth (ors + 1) red clusIn clusOut
--- toClusters (Impc f (Existsc vars f))
 toClusters (Impc f g) depth ors red clusIn clusOut = toClusters f depth ors red clusIn clusOut ++ toClusters g (depth + 1) ors red clusIn clusOut
 toClusters (Negc (Conjc fs)) depth ors red clusIn clusOut = concat [toClusters fi depth ors red clusIn clusOut | fi <- init fs] 
     ++ toClusters (last fs) (depth +1) ors (xor red True) clusIn clusOut
@@ -104,13 +100,6 @@ toGraph edges = digraph (Str "G") $ do
     graphAttrs [style solid]
     -- first generate outer cluster(s)
     mapM_ (\ ((outClustInt, nao, outVars), outClustName) -> do
-        -- (if nao == 1 then do
-        --     graphAttrs [textLabel "Conjunction (∧)", color Black]
-        -- else (if nao == 2 then do
-        --         graphAttrs [textLabel "Disjunction (∨)", color Black]
-        --     else graphAttrs [textLabel "", color White]
-        --     )
-        --     )
         (if nao == 1 then 
             (if null outVars then 
                 do graphAttrs [textLabel "Conjunction (∧)", color Black]
@@ -146,14 +135,6 @@ toGraph edges = digraph (Str "G") $ do
                     else graphAttrs [textLabel "", color White]
                         )
                     )
-                
-                -- (if naoIn == 1 then do
-                --         graphAttrs [textLabel "Conjunction (∧)", color Black]
-                --     else (if naoIn == 2 then do
-                --             graphAttrs [textLabel "Disjunction (∨)", color Black]
-                --         else graphAttrs [textLabel "", color White]
-                --             )
-                --         )
                
                 cluster inClustName $ do
                     (if nao /= 0 || naoIn /= 0 then do
@@ -166,11 +147,19 @@ toGraph edges = digraph (Str "G") $ do
                         let n1 = s1 ++ show clusIn ++ show clusOut
                         let n2 = s2 ++ show clusIn ++ show clusOut
 
-                        -- locality of corr.
-                        node n1 [color Black, 
+                        -- locality of corr. + implied worlds
+                        node n1 [color $ 
+                                    -- if s1 `elem` asWorlds outVars || s1 `elem` asWorlds inVars then do DarkGreen
+                                    --     else Black, 
+                                    if s1 `elem` asWorlds outVars then do DarkGreen
+                                        else (if s1 `elem` asWorlds inVars then do DarkGreen else Black), 
                             if s1 == "w0" then do textLabel "w" else toLabel (s1::String),
                             shape $ if s1 == "w0" then do DoubleCircle else Circle]
-                        node n2 [color Black, 
+                        node n2 [color $ 
+                                    -- if s1 `elem` asWorlds outVars || s1 `elem` asWorlds inVars then do DarkGreen
+                                    --     else Black, 
+                                if s2 `elem` asWorlds outVars then do DarkGreen
+                                        else (if s2 `elem` asWorlds inVars then do DarkGreen else Black), 
                             if s2 == "w0" then do textLabel "w" else toLabel (s2::String),
                             shape $ if s2 == "w0" then do DoubleCircle else Circle]
 
@@ -187,6 +176,9 @@ toGraph edges = digraph (Str "G") $ do
                 ) (zipGrIDs (getInClustersProvOut edges (outClustInt, nao, outVars)) (getInClustersProvOut edges (outClustInt, nao, outVars)))
         ) (zipGrIDs (getOutClusters edges) (getOutClusters edges))
 
+asWorlds :: [Int] -> [String]
+asWorlds = map (\ k -> "w" ++ show k)
+
 -- -- helper to get maxDepth (implied/dashed)
 -- curClusOr1 :: Clust -> Clust -> Int -> Edge -> Bool
 -- curClusOr1 cIn cOut orCur (_,_,or1,_,_,c1,c2) | orCur == 0 && cIn == c1 && cOut == c2 = True
@@ -199,25 +191,25 @@ curClusOr1 (cIn, cInTp, _) (cOut, cOutTp, _)  orCur (_,_,or1,_,_,(c1, c1Tp, _),(
                                         | cIn == c1 && cOut == c2 && cInTp == c1Tp && cOutTp == c2Tp && orCur == or1 = True
                                         | otherwise = False
 
--- is outer+inner subcluster
-curClus1 :: Clust -> Clust -> Edge -> Bool
-curClus1 (cIn, cInTp, _) (cOut, cOutTp, _) (_,_,_,_,_,(c1, c1Tp, _),(c2, c2Tp, _)) | cIn == c1 && cOut == c2 && cInTp == c1Tp && cOutTp == c2Tp = True
-                                    | otherwise = False                                    
 -- -- is outer+inner subcluster
 -- curClus1 :: Clust -> Clust -> Edge -> Bool
--- curClus1 cIn cOut (_,_,_,_,_,c1,c2) | cIn == c1 && cOut == c2 = True
---                                     | otherwise = False
+-- curClus1 (cIn, cInTp, _) (cOut, cOutTp, _) (_,_,_,_,_,(c1, c1Tp, _),(c2, c2Tp, _)) | cIn == c1 && cOut == c2 && cInTp == c1Tp && cOutTp == c2Tp = True
+--                                     | otherwise = False                                    
+-- is outer+inner subcluster
+curClus1 :: Clust -> Clust -> Edge -> Bool
+curClus1 cIn cOut (_,_,_,_,_,c1,c2) | cIn == c1 && cOut == c2 = True
+                                    | otherwise = False
 
--- get the inner subcluster provided outer cluster
-getInClustersProvOut :: EdgeList -> Clust -> [(Int,Int, [Int])]
-getInClustersProvOut [] _ = []
-getInClustersProvOut ((_,_,_,_,_,c1,(c2, c2Tp, _)):rest) (cOut, cOutTp, cOutV) | c2 == cOut  && c2Tp == cOutTp = nub (c1 : getInClustersProvOut rest (cOut, cOutTp, cOutV))
-                                                    | otherwise = getInClustersProvOut rest (cOut, cOutTp, cOutV)
 -- -- get the inner subcluster provided outer cluster
 -- getInClustersProvOut :: EdgeList -> Clust -> [(Int,Int, [Int])]
 -- getInClustersProvOut [] _ = []
--- getInClustersProvOut ((_,_,_,_,_,c1,c2):rest) cOut | c2 == cOut = nub (c1 : getInClustersProvOut rest cOut)
---                                                     | otherwise = getInClustersProvOut rest cOut
+-- getInClustersProvOut ((_,_,_,_,_,c1,(c2, c2Tp, _)):rest) (cOut, cOutTp, cOutV) | c2 == cOut  && c2Tp == cOutTp = nub (c1 : getInClustersProvOut rest (cOut, cOutTp, cOutV))
+--                                                     | otherwise = getInClustersProvOut rest (cOut, cOutTp, cOutV)
+-- get the inner subcluster provided outer cluster
+getInClustersProvOut :: EdgeList -> Clust -> [(Int,Int, [Int])]
+getInClustersProvOut [] _ = []
+getInClustersProvOut ((_,_,_,_,_,c1,c2):rest) cOut | c2 == cOut = nub (c1 : getInClustersProvOut rest cOut)
+                                                    | otherwise = getInClustersProvOut rest cOut
 getOutClusters :: EdgeList -> [(Int,Int, [Int])]
 getOutClusters [] = []
 getOutClusters ((_,_,_,_,_,_,c):rest) = nub (c : getOutClusters rest)

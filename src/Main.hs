@@ -18,8 +18,8 @@ main = do
     case parse (alexScanTokens input) of
         Left p -> error $ "error at " ++ show p
         Right f -> do
-          print f
-          print (toModBxA (modSimp f))
+          putStrLn ("Input: " ++ ppModForm f)
+          -- print (toModBxA (modSimp f))
           case getSqBxA1 (toModBxA (modSimp f)) of
             Nothing -> do 
               putStrLn "Not Sahlqvist. Not uniform. No Correspondent found."
@@ -30,15 +30,15 @@ main = do
               (if isUniform (toModBxA (modSimp f)) then
                   putStrLn "Uniform."
               else putStrLn "Not uniform.")
-              print folF
+              -- print folF
               (if folF == Topc then do
                 _ <- runGraphviz topViz Jpeg "FOLCorrVis.jpeg"
-                putStrLn (ppFOLForm folF)
+                putStrLn ("First-Order Correspondent: " ++ ppFOLForm folF)
               else (if folF == Negc Topc then do
                       _ <- runGraphviz botViz Jpeg "FOLCorrVis.jpeg"
-                      putStrLn (ppFOLForm folF)
+                      putStrLn ("First-Order Correspondent: " ++ ppFOLForm folF)
                     else do
-                      putStrLn (ppFOLForm folF)
+                      putStrLn ("First-Order Correspondent: " ++ ppFOLForm folF)
                       (if clusterDepth (simpFOLViz2 folF) 0 < 3 then
                         (if not (impliedOrs (simpFOLViz2 folF)) then do
                           _ <- runGraphviz (toGraph (toClusters3 (simpFOLViz2 folF))) Jpeg "FOLCorrVis.jpeg"
@@ -58,6 +58,8 @@ main = do
               
 -- ((p-><>p)&(<>p->p))|((q-><><>q)&(<>q-><><>q))
 -- ((p-><>p)|(q-><><>q))&((<>p->p)|(<>q-><><>q))
+-- p->(<>[]<>[]<>p|[]<>[]<>[]p)
+-- (p|(<>p&~[]<>p))-><><>p
 
 -- ([]((p|~<>p)->[]p))| ((q&<>q)->[]q)
 

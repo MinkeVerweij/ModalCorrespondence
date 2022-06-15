@@ -35,6 +35,22 @@ biImp f g = Con (imp f g) (imp g f)
 bot :: ModForm
 bot = Not Top
 
+-- print modal formulas nicely in terminal
+ppModForm :: ModForm -> String
+ppModForm Top = "T"
+ppModForm (Not Top) = "⊥"
+ppModForm (Prp 0) = "p"
+ppModForm (Prp 1) = "q"
+ppModForm (Prp 2) = "r"
+ppModForm (Prp i) = "p" ++ show i
+ppModForm (Not (Box (Not f))) = "♢" ++ ppModForm f
+ppModForm (Not (Con (Not f) (Not g))) = "( " ++ ppModForm f ++ " ∨ " ++ ppModForm g ++ " )"
+ppModForm (Not (Con f (Not g))) = "( " ++ ppModForm f ++ " → " ++ ppModForm g ++ " )"
+ppModForm (Con f g) = "( " ++ ppModForm f ++ " ∧ " ++ ppModForm g ++ " )"
+ppModForm (Box f) = "□" ++ ppModForm f
+ppModForm (Not f) = "¬" ++ ppModForm f
+
+
 -- Modal Formulas with Boxed atoms as primitives
 type N = Int 
 
