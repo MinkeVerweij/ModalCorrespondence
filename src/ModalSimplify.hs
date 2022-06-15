@@ -19,7 +19,9 @@ modSimp (Not (Con (Not (Not f)) g)) = Not (Con (modSimp f) (modSimp g))
 modSimp (Not (Con f (Not (Not g)))) = Not (Con (modSimp f) (modSimp g))
 
 modSimp (Not f) = Not (modSimp f)
-modSimp (Con f g) = Con (modSimp f) (modSimp g)
+modSimp (Con f g) | f == g = modSimp f -- (f&f)
+                | f == Not g || g == Not f = Not Top -- (f&~f) (also ~(f->f))
+                | otherwise =  Con (modSimp f) (modSimp g)
 modSimp (Box f) = Box (modSimp f)
 
 -- transform normal to boxed atom primitive

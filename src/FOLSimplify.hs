@@ -3,12 +3,12 @@ module FOLSimplify where
 import Languages
 import Data.List
 import Data.Maybe
-
+import Data.Bifunctor
 {- Simplification of FOL formulas -}
 
 -- general simplify first, then simplify 'Exists v_i (x=v_i & a(v_i))' to a(x)
 simpFOL3 :: FOLFormVSAnt -> FOLFormVSAnt
-simpFOL3 f = simpFOL1 (simpFOL5 (simpFOL2 (simpFOL1 f)))
+simpFOL3 f = simpFOL5 (simpFOL2 (simpFOL1 f))
 
 -- general simplification
 simpFOL :: FOLFormVSAnt -> FOLFormVSAnt
@@ -31,7 +31,8 @@ simpFOL (Impc (Negc Topc) _) = Topc
 simpFOL (Impc _ Topc) = Topc
 simpFOL (Impc f (Negc Topc)) = simpFOL (Negc f)
 
-simpFOL (Forallc vars (Impc f (Conjc gs))) = Conjc [remUnusedQuantVar (simpFOL (Forallc vars (Impc f g))) | g <- gs]
+simpFOL (Forallc vars (Impc f (Forallc vars2 (Impc g h)))) =  Forallc (vars ++ vars2) (simpFOL (Impc (Conjc (flattenCon [f, g])) h)) --Conjc [remUnusedQuantVar (simpFOL (Forallc vars (Impc f g))) | g <- gs]
+-- simpFOL (Forallc vars (Impc f (Existsc vars2 (Conjc gs)))) = Existsc vars2 (Conjc [remUnusedQuantVar (simpFOL (Forallc vars (Impc f g))) | g <- gs])
 
 simpFOL (Impc f g) = Impc (simpFOL f) (simpFOL g)
 
@@ -58,6 +59,16 @@ flattenDis [] = []
 flattenDis (Disjc fs:gs) = fs ++ flattenDis gs
 flattenDis (f:fs) = f : flattenDis fs
 
+hasforAllImp :: [FOLFormVSAnt] -> Bool
+hasforAllImp [] = False
+hasforAllImp ((Forallc _ (Impc _ _)):_) = True
+hasforAllImp ((Existsc _ (Conjc fs)):rest) = hasforAllImp fs || hasforAllImp rest
+hasforAllImp (_:fs) = hasforAllImp fs
+
+hasForAll :: [FOLFormVSAnt] -> Bool
+hasForAll [] = False
+hasForAll ((Forallc _ _):_) = True
+hasForAll (_:fs) = hasForAll fs
 
 -- instantiate possible existentials and simplify again
 simpFOL2 :: FOLFormVSAnt -> FOLFormVSAnt
@@ -69,6 +80,9 @@ simpFOL4 (Negc (Conjc fs)) =  Disjc [simpFOL2 (simpFOL4 (simpFOL1 (Negc f)))|f<-
 simpFOL4 (Negc (Impc f g)) = Conjc [simpFOL1 f, simpFOL1 (Negc g)]
 simpFOL4 (Negc (Existsc vars f)) = Forallc vars (simpFOL4 (simpFOL1 (Negc f)))
 simpFOL4 (Negc (Forallc vars f)) = Existsc vars (simpFOL4 (simpFOL1 (Negc f)))
+-- simpFOL4 (Forallc vars (Impc f (Forallc vars2 (Impc g h)))) =  Forallc (vars ++ vars2)  (Impc (Conjc (flattenCon [simpFOL4 f, simpFOL4 g])) h) 
+-- simpFOL4 (Forallc vars (Impc f (Existsc vars2 (Conjc gs)))) | hasForAll gs = Existsc vars2 (Conjc [remUnusedQuantVar (simpFOL (Forallc vars (Impc f g))) | g <- gs])
+-- simpFOL4 (Forallc vars (Impc f (Existsc vars2 (Disjc gs)))) | hasForAll gs = Existsc vars2 (Disjc [remUnusedQuantVar (simpFOL (Forallc vars (Impc f g))) | g <- gs])
 simpFOL4 (Conjc fs) = Conjc [simpFOL4 f | f<- fs]
 simpFOL4 (Disjc fs) = Disjc [simpFOL4 f | f<- fs]
 simpFOL4 f = f
@@ -76,6 +90,37 @@ simpFOL4 f = f
 simpFOL5 :: FOLFormVSAnt -> FOLFormVSAnt
 simpFOL5 f | simpFOL4 f == f = f
         | otherwise = simpFOL4 f
+
+simpFOLViz :: FOLFormVSAnt -> FOLFormVSAnt
+simpFOLViz (Forallc vars (Impc f (Forallc vars2 (Impc g h)))) = simpFOLViz (Forallc (vars ++ vars2)  (simpFOL1 (Impc (Conjc (flattenCon [f, g])) h)))
+simpFOLViz (Forallc vars (Impc f (Existsc vars2 (Conjc gs)))) | hasForAll gs = Existsc vars2 (Conjc [simpFOLViz (Forallc vars (Impc f g)) | g <- gs])
+simpFOLViz (Forallc vars (Impc f (Conjc gs))) = Conjc [simpFOLViz (Forallc vars (Impc f g)) | g <- gs]
+simpFOLViz (Conjc fs) = Conjc (flattenCon [simpFOLViz f | f <- fs])
+simpFOLViz (Disjc fs) | not (null (negForms fs)) && not (null (posForms fs)) = simpFOL1 (Impc (Conjc (negForms fs)) (Conjc (posForms fs)))
+                    | otherwise = Disjc (flattenDis [simpFOLViz f | f <- fs])
+simpFOLViz (Existsc vars (Conjc fs)) | not (null (snd (getVarsExForms fs))) = Existsc (vars ++ snd (getVarsExForms fs)) (Conjc (flattenCon (fst (getVarsExForms fs))))
+                            | otherwise = Existsc vars (Conjc (flattenCon [simpFOLViz f | f <- fs]))
+simpFOLViz (Existsc vars (Disjc fs)) = Existsc vars (Disjc (flattenDis [simpFOLViz f | f <- fs]))
+-- simpFOLViz (Existsc vars f) = Existsc vars (simpFOLViz f)
+simpFOLViz (Forallc vars f) = Forallc vars (simpFOLViz f)
+simpFOLViz f = simpFOL1 f
+
+getVarsExForms :: [FOLFormVSAnt] -> ([FOLFormVSAnt], [Var])
+getVarsExForms [] = ([],[])
+getVarsExForms ((Existsc vars f):fs) = bimap (f :) (vars ++) (getVarsExForms fs) -- (f : fst (getVarsExForms fs), vars ++ snd (getVarsExForms fs))
+getVarsExForms (f:fs) = bimap (f :) ([] ++) (getVarsExForms fs)
+-- getVarsExForms :: [FOLFormVSAnt] -> [Var] -> ([Var], [FOLFormVSAnt])
+-- getVarsExForms ((Existsc vars f):fs) v = ((v ++ vars), [f]) ++ (getVarsExForms fs (v ++ vars))
+
+
+simpFOLViz1 :: FOLFormVSAnt -> FOLFormVSAnt
+simpFOLViz1 f | simpFOLViz f == f = f
+            | otherwise = simpFOLViz f
+
+simpFOLViz2 :: FOLFormVSAnt -> FOLFormVSAnt
+simpFOLViz2 f | simpFOLViz1 (simpFOLViz1 f) == f = f
+            | otherwise = simpFOLViz1 (simpFOLViz1 f)
+
 
 {- instantiate possible existentials
     'Exists v_i (x=v_i & a(v_i))' => a(x)
@@ -118,7 +163,7 @@ exANDVarEq (V x:xs) fs | isJust (getEqVar x fs) =
          simpFOL1 (Conjc [varsSub [x] [fromJust (getEqVar x fs)] f | f <- fs])
             | otherwise = exANDVarEq xs fs
 
-exANDVarEq [] fs = simpFOL1 (Conjc fs)
+exANDVarEq [] fs = simpExAND (simpFOL1 (Conjc fs))
 
 -- Exists (Disj fs) w/ fs conjunctions
 exORANDSVarEq1 :: [Var] -> [[FOLFormVSAnt]] -> FOLFormVSAnt
@@ -185,3 +230,13 @@ varsSubTerm _ _ t= t
 getInts :: [Var] -> [Int]
 getInts [] = []
 getInts ((V x):xs) = x : getInts xs
+
+posForms :: [FOLFormVSAnt] -> [FOLFormVSAnt]
+posForms [] = []
+posForms ((Negc _):fs) = posForms fs
+posForms (f:fs) = f : posForms fs
+
+negForms :: [FOLFormVSAnt] -> [FOLFormVSAnt]
+negForms [] = []
+negForms ((Negc f):fs) = f : negForms fs
+negForms (_:fs) = negForms fs

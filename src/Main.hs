@@ -9,6 +9,7 @@ import Data.GraphViz.Commands
 import GraphTest
 import SahlqvistCheck
 import MakeViz
+import FOLSimplify
 
 main :: IO ()
 main = do
@@ -30,9 +31,35 @@ main = do
                   putStrLn "Uniform."
               else putStrLn "Not uniform.")
               print folF
-              _ <- runGraphviz (toGraph (toClusters3 folF)) Jpeg "FOLCorrVis.jpeg"
-              putStrLn (ppFOLForm folF)
+              (if folF == Topc then do
+                _ <- runGraphviz topViz Jpeg "FOLCorrVis.jpeg"
+                putStrLn (ppFOLForm folF)
+              else (if folF == Negc Topc then do
+                      _ <- runGraphviz botViz Jpeg "FOLCorrVis.jpeg"
+                      putStrLn (ppFOLForm folF)
+                    else do
+                      putStrLn (ppFOLForm folF)
+                      (if clusterDepth (simpFOLViz2 folF) 0 < 3 then
+                        (if not (impliedOrs (simpFOLViz2 folF)) then do
+                          _ <- runGraphviz (toGraph (toClusters3 (simpFOLViz2 folF))) Jpeg "FOLCorrVis.jpeg"
+                          putStrLn ("Formula simplified for visualisation: " ++ ppFOLForm (simpFOLViz2 folF))
+                        else do
+                          putStrLn "Cannot visualize this formula, too many implied disjuncts."
+                          putStrLn ("Formula simplified for visualisation: " ++ ppFOLForm (simpFOLViz2 folF))
+                        )
+                        else do
+                          putStrLn "Cannot visualize this formula, too many subclusters."
+                          putStrLn ("Formula simplified for visualisation: " ++ ppFOLForm (simpFOLViz2 folF))
+                        )
+                    )
+                )
+                
               
               
+-- ((p-><>p)&(<>p->p))|((q-><><>q)&(<>q-><><>q))
+-- ((p-><>p)|(q-><><>q))&((<>p->p)|(<>q-><><>q))
+
+-- ([]((p|~<>p)->[]p))| ((q&<>q)->[]q)
+
 -- ~(p&<><>p)->[]p      (~p|~<><>p)->[]p       (~p->[]p)&(~<><>p->[]p)     ([]p|p)&(<><>p|[]p)   ([]p&<><>p)|([]p)|(p&<><>p)|(p|[]p)
 -- ([]p|<>(p&<>p)|~[]q)->p   ([]p|<>((p&<>p)|~q))->p
