@@ -12,6 +12,7 @@ import StandTrans
 import FOLSimplify
 import Instantiation
 import SahlqvistCheck
+import Data.Maybe
 
 main :: IO ()
 main = hspec $ do
@@ -66,6 +67,17 @@ main = hspec $ do
 
     describe "simplifying Exists Vi Conj [Vi = Vj, ...]"  $ do
       it "in: 2 [Rx1x2, x1=x2], out: (Just) 1" $ getEqVar 2 [Rc (VT (V 1)) (VT (V 2)), Eqdotc (VT (V 1)) (VT (V 2))] `shouldBe` Just 1
+
+    describe "Has FOL (Sahlqvist) correspondent" $ do
+      it "reflexivity Y" $ getSqBxA1 (toModBxA (modSimp (imp (Box (Prp 0)) (Prp 0)))) `shouldBe` Just (Rc (VT (V 0)) (VT (V 0)))
+      it "boxed reflexivity Y" $ isJust (getSqBxA1 (toModBxA (modSimp (Box (Box (Box (Box (Box (Box (Box (Box (Box (Box (imp (Box (Prp 0)) (Prp 0))))))))))))))) `shouldBe` True 
+      it "McKinsey N" $ isJust (getSqBxA1 (toModBxA (modSimp (imp (Box (dia (Prp 0))) (dia (Box (Prp 0))))))) `shouldBe` False
+      it "[] McKinsey & transitivity N" $ isJust (getSqBxA1 (toModBxA (modSimp (Con (imp (Box (dia (Prp 0))) (dia (Box (Prp 0)))) (imp (dia (dia (Prp 1))) (dia (Prp 1))))))) `shouldBe` False
+      it "Lob N" $ isJust (getSqBxA1 (toModBxA (modSimp (imp (Box (imp (Box (Prp 0)) (Prp 0))) (Box (Prp 0)))))) `shouldBe` False
+      it "~[]<>p not Sq" $ isSqBxA (toModBxA (modSimp (Not (Box (dia (Prp 0))))) ) `shouldBe` False
+      it "[]p->p not uniform" $ isUniform (toModBxA (modSimp (imp (Box (Prp 0)) (Prp 0)))) `shouldBe` False
+      it "~[]<>p & ([]p->p) has corresp." $ isJust (getSqBxA (toModBxA (modSimp (Con (Not (Box (dia (Prp 0)))) (imp (Box (Prp 0)) (Prp 0)))))) `shouldBe` True
+
 
 -- functions for testing
 

@@ -11,13 +11,13 @@ import FOLSimplify
 
 -- preliminary check for visualization (not too many nested clusters)
 clusterDepth :: FOLFormVSAnt -> Int -> Int
-clusterDepth (Conjc fs) n | hasforAllImp fs = (maximum [clusterDepth f n | f <- fs ]) + 1
+clusterDepth (Conjc fs) n | hasforAllImpOr fs = (maximum [clusterDepth f n | f <- fs ]) + 1
                             | otherwise = n
-clusterDepth (Disjc fs) n | hasforAllImp fs = (maximum [clusterDepth f n | f <- fs ]) + 1
+clusterDepth (Disjc fs) n | hasforAllImpOr fs = (maximum [clusterDepth f n | f <- fs ]) + 1
                             | otherwise = n
-clusterDepth (Existsc _ (Conjc fs)) n | hasforAllImp fs = (maximum [clusterDepth f n | f <- fs ]) + 1
+clusterDepth (Existsc _ (Conjc fs)) n | hasforAllImpOr fs = (maximum [clusterDepth f n | f <- fs ]) + 1
                             | otherwise = n
-clusterDepth (Existsc _ (Disjc fs)) n | hasforAllImp fs = (maximum [clusterDepth f n | f <- fs ]) + 1
+clusterDepth (Existsc _ (Disjc fs)) n | hasforAllImpOr fs = (maximum [clusterDepth f n | f <- fs ]) + 1
                             | otherwise = n
 clusterDepth _ n = n
 
@@ -79,16 +79,16 @@ toClusters1 f = toClusters f 0 0 False
 toClusters2 :: FOLFormVSAnt -> Int -> Int -> [Int] -> EdgeList
 toClusters2 (Conjc fs) m k vs = concat [toClusters1 f (n, 1, []) (m, k, vs) | (f, n) <- zip fs [0..]]
 toClusters2 (Disjc fs) m  k vs = concat [toClusters1 f (n, 2, []) (m, k, vs) | (f, n) <- zip fs [0..]]
-toClusters2 (Existsc vars (Conjc fs)) m k vs | hasforAllImp fs = concat [toClusters1 f (n, 1, getInts vars) (m, k, vs) | (f, n) <- zip fs [0..]]
-toClusters2 (Existsc vars (Disjc fs)) m k vs | hasforAllImp fs = concat [toClusters1 f (n, 2, getInts vars) (m, k, vs) | (f, n) <- zip fs [0..]]
+toClusters2 (Existsc vars (Conjc fs)) m k vs | hasforAllImpOr fs = concat [toClusters1 f (n, 1, getInts vars) (m, k, vs) | (f, n) <- zip fs [0..]]
+toClusters2 (Existsc vars (Disjc fs)) m k vs | hasforAllImpOr fs = concat [toClusters1 f (n, 2, getInts vars) (m, k, vs) | (f, n) <- zip fs [0..]]
 toClusters2 f m k vs = toClusters1 f (0, 0, []) (m, k, vs)
 
 -- outer clusters
 toClusters3 :: FOLFormVSAnt -> EdgeList
 toClusters3 (Conjc fs) = concat [toClusters2 f m 1 []| (f,m) <- zip fs [0..]]
 toClusters3 (Disjc fs) = concat [toClusters2 f m 2 []| (f,m) <- zip fs [0..]]
-toClusters3 (Existsc vars (Conjc fs)) | hasforAllImp fs = concat [toClusters2 f m 1 (getInts vars)| (f,m) <- zip fs [0..]]
-toClusters3 (Existsc vars (Disjc fs)) | hasforAllImp fs =  concat [toClusters2 f m 2 (getInts vars)| (f,m) <- zip fs [0..]]
+toClusters3 (Existsc vars (Conjc fs)) | hasforAllImpOr fs = concat [toClusters2 f m 1 (getInts vars)| (f,m) <- zip fs [0..]]
+toClusters3 (Existsc vars (Disjc fs)) | hasforAllImpOr fs =  concat [toClusters2 f m 2 (getInts vars)| (f,m) <- zip fs [0..]]
 toClusters3 f = toClusters2 f 0 0 []
 
 -- ors : colors for implied disjuncts 
@@ -163,13 +163,16 @@ toGraph edges = digraph (Str "G") $ do
                             if s2 == "w0" then do textLabel "w" else toLabel (s2::String),
                             shape $ if s2 == "w0" then do DoubleCircle else Circle]
 
-                        edgeAttrs [ style $ if depth == maxDep && not red then dashed else solid
+                        edgeAttrs [ style $ if depth == maxDep then dashed else solid
                                 , color $ if red then Red else myColors!!ors
-                                , edgeEnds Forward]
+                                , edgeEnds Forward
+                                , textLabel $ if red then " x " else ""
+                                , arrowTo $ if red then box else normal]
                         if eq then do
                             edgeAttrs [style dotted, color (myColors!!ors), edgeEnds NoDir, textLabel "  = "]
                             n1 --> n2
-                        else
+                        else do
+                            -- edgeAttrs [textLabel ""]
                             n1 --> n2
 
                         ) (filter (curClus1 (inClustInt, naoIn, inVars) (outClustInt, nao, outVars)) edges)

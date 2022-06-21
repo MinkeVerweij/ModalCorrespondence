@@ -12,11 +12,9 @@ isSqBxA (NotBxA (NotBxA f)) = isSqBxA f
 isSqBxA (NotBxA (ConBxA f g)) = 
     isSqAntBxA f && isNegativeBxA g -- f -> ~g
     || isSqAntBxA g && isNegativeBxA f -- g -> ~f
-    || isSqBxA (NotBxA f) && isSqBxA (NotBxA g) -- ~(~f & ~g) both Sq + no shared props
-    &&  null (props f `intersect` props g) 
-    || isNegativeBxA  (NotBxA (ConBxA  f g)) -- ~(f & g) mono. neg.
-    && isSqAntBxA (ConBxA  f g)
-    || isSqAntBxA (ConBxA f g) -- (~ h -> \bot)
+    || (isSqBxA (NotBxA f) && isSqBxA (NotBxA g) &&  null (props f `intersect` props g) ) -- (f|g) + no shared props
+    || isNegativeBxA (ConBxA f g) -- (T -> Not (f & g))
+    || isSqAntBxA (ConBxA f g) -- ((f&g) -> \bot)
 isSqBxA (ConBxA f g) = isSqBxA f && isSqBxA g
 isSqBxA (Nbox _ f) = isSqBxA f
 isSqBxA f | isSqAntBxA (NotBxA f) = True -- (~ f -> \bot)

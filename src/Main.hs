@@ -30,7 +30,7 @@ main = do
               (if isUniform (toModBxA (modSimp f)) then
                   putStrLn "Uniform."
               else putStrLn "Not uniform.")
-              -- print folF
+              print folF
               (if folF == Topc then do
                 _ <- runGraphviz topViz Jpeg "FOLCorrVis.jpeg"
                 putStrLn ("First-Order Correspondent: " ++ ppFOLForm folF)
@@ -57,10 +57,12 @@ main = do
               
               
 -- ((p-><>p)&(<>p->p))|((q-><><>q)&(<>q-><><>q))
+-- ((<>[]p->[]<>p)&(p-><>p))|((<><>q-><>q)&(<>q-><><>q))
 -- ((p-><>p)|(q-><><>q))&((<>p->p)|(<>q-><><>q))
 -- p->(<>[]<>[]<>p|[]<>[]<>[]p)
 -- (p|(<>p&~[]<>p))-><><>p
 
+-- ~[]<>p & ([]p->p)
 -- ([]((p|~<>p)->[]p))| ((q&<>q)->[]q)
 
 -- ~(p&<><>p)->[]p      (~p|~<><>p)->[]p       (~p->[]p)&(~<><>p->[]p)     ([]p|p)&(<><>p|[]p)   ([]p&<><>p)|([]p)|(p&<><>p)|(p|[]p)

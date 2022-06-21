@@ -1,3 +1,5 @@
 .stack-work
 stack.yaml.lock
 *.cabal
+test/Efficiency.hs
+FOLCorrVis.jpeg
