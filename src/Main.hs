@@ -30,7 +30,8 @@ main = do
               (if isUniform (toModBxA (modSimp f)) then
                   putStrLn "Uniform."
               else putStrLn "Not uniform.")
-              print folF
+              -- print folF
+              -- print (simpFOLViz2 folF)
               (if folF == Topc then do
                 _ <- runGraphviz topViz Jpeg "FOLCorrVis.jpeg"
                 putStrLn ("First-Order Correspondent: " ++ ppFOLForm folF)
@@ -67,3 +68,8 @@ main = do
 
 -- ~(p&<><>p)->[]p      (~p|~<><>p)->[]p       (~p->[]p)&(~<><>p->[]p)     ([]p|p)&(<><>p|[]p)   ([]p&<><>p)|([]p)|(p&<><>p)|(p|[]p)
 -- ([]p|<>(p&<>p)|~[]q)->p   ([]p|<>((p&<>p)|~q))->p
+
+-- TOO MANY SUBCLUSTERS : ((p&<>p)|~<>p)-><>([]p|<>p) or ((p&<>p)|[]p)-><>([]p|[]<>p)
+-- TOO MANY IMPLIED ORS (p&<>p&[]p&<>[]p)->[]<>p
+
+-- (p&<>p&[]p)-><>([]p|[]<>p)

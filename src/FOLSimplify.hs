@@ -8,7 +8,7 @@ import Data.Bifunctor
 
 -- general simplify first, then simplify 'Exists v_i (x=v_i & a(v_i))' to a(x)
 simpFOL3 :: FOLFormVSAnt -> FOLFormVSAnt
-simpFOL3 f = simpFOL5 (simpFOL2 (simpFOL1 f))
+simpFOL3 f = simpFOL2 (simpFOL1 f)
 
 -- general simplification
 simpFOL :: FOLFormVSAnt -> FOLFormVSAnt
@@ -138,23 +138,30 @@ simpFOL4 (Forallc vars f) = Forallc vars (simpFOL4 f)
 simpFOL4 (Impc f g) = Impc (simpFOL4 f) (simpFOL4 g)
 simpFOL4 f = simpFOL1 f
 
--- works for p->(<>[]<>p|...) not p->(<>[]<>[]<>p|...)
-simpFOL5 :: FOLFormVSAnt -> FOLFormVSAnt
-simpFOL5 f | simpFOL6 (simpFOL6 f) == f = f
-            |otherwise = simpFOL6 (simpFOL6 f)
 
-simpFOL6 :: FOLFormVSAnt -> FOLFormVSAnt
-simpFOL6 f | simpFOL4 f == f = f
-        | otherwise = simpFOL4 f
+simpFOL5 :: FOLFormVSAnt -> FOLFormVSAnt
+simpFOL5 f | simpFOL4 f == f = f
+        | otherwise = simpFOL5 (simpFOL4 f)
 
 {- simplifying/expanding for visualization-}
+-- simpFOLViz2 :: FOLFormVSAnt -> FOLFormVSAnt
+-- simpFOLViz2 f | simpFOLViz1 (simpFOLViz1 f) == f = f
+--             | otherwise = simpFOLViz1 (simpFOLViz1 f)
+
+-- simpFOLViz2 :: FOLFormVSAnt -> FOLFormVSAnt
+-- simpFOLViz2 f | simpFOLViz f == f = f
+--             | otherwise = simpFOLViz2 (simpFOLViz f)
+
 simpFOLViz2 :: FOLFormVSAnt -> FOLFormVSAnt
-simpFOLViz2 f | simpFOLViz1 (simpFOLViz1 f) == f = f
-            | otherwise = simpFOLViz1 (simpFOLViz1 f)
+simpFOLViz2 f = simpFOLViz1 (simpFOL5 f)
 
 simpFOLViz1 :: FOLFormVSAnt -> FOLFormVSAnt
-simpFOLViz1 f | simpFOLViz (simpFOLViz f) == f = f
-            | otherwise = simpFOLViz (simpFOLViz f)
+simpFOLViz1 f | simpFOLViz f == f = f
+            | otherwise = simpFOLViz1 (simpFOLViz f)
+
+-- simpFOLViz1 :: FOLFormVSAnt -> FOLFormVSAnt
+-- simpFOLViz1 f | simpFOLViz (simpFOLViz f) == f = f
+--             | otherwise = simpFOLViz (simpFOLViz f)
 
 simpFOLViz :: FOLFormVSAnt -> FOLFormVSAnt
 simpFOLViz (Forallc vars (Impc f (Forallc vars2 (Impc g h)))) = simpFOLViz (Forallc (vars ++ vars2)  (simpFOL1 (Impc (Conjc (flattenCon [f, g])) h)))
@@ -163,6 +170,7 @@ simpFOLViz (Forallc vars (Impc f (Conjc gs))) = Conjc [simpFOLViz (Forallc vars 
 simpFOLViz (Forallc vars (Impc f (Disjc gs))) | hasforAllImpOr gs = Disjc [simpFOLViz (Forallc vars (Impc f g))| g <-gs]
 simpFOLViz (Conjc fs) = Conjc (flattenCon [simpFOLViz f | f <- fs])
 simpFOLViz (Disjc fs) | not (null (negForms fs)) && not (null (posForms fs)) = simpFOLViz (simpFOL3 (Impc (Conjc (negForms fs)) (Conjc (posForms fs))))
+                    | not (null (negForms fs)) && length fs > 1 = simpFOLViz (simpFOL3 (Impc (Conjc (init (negForms fs))) (Negc (last (negForms fs)))))
                     | otherwise = Disjc (flattenDis [simpFOLViz f | f <- fs])
 simpFOLViz (Existsc vars (Conjc fs)) | not (null (snd (getVarsExForms fs))) = Existsc (vars ++ snd (getVarsExForms fs)) (simpFOLViz (Conjc (flattenCon (fst (getVarsExForms fs)))))
                             | otherwise = Existsc vars (Conjc (flattenCon [simpFOLViz f | f <- fs]))

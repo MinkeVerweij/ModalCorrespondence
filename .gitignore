@@ -3,3 +3,4 @@ stack.yaml.lock
 *.cabal
 test/Efficiency.hs
 FOLCorrVis.jpeg
+.DS_Store

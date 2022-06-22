@@ -6,15 +6,11 @@ import Data.Bits
     Functions to check whether modal formula is Sahlqvist
 -}
 isSqBxA :: ModFormBxA -> Bool
-isSqBxA TopBxA = True
-isSqBxA (NotBxA TopBxA) = True
 isSqBxA (NotBxA (NotBxA f)) = isSqBxA f
-isSqBxA (NotBxA (ConBxA f g)) = 
-    isSqAntBxA f && isNegativeBxA g -- f -> ~g
-    || isSqAntBxA g && isNegativeBxA f -- g -> ~f
-    || (isSqBxA (NotBxA f) && isSqBxA (NotBxA g) &&  null (props f `intersect` props g) ) -- (f|g) + no shared props
-    || isNegativeBxA (ConBxA f g) -- (T -> Not (f & g))
-    || isSqAntBxA (ConBxA f g) -- ((f&g) -> \bot)
+isSqBxA (NotBxA (ConBxA f g)) | isSqAntBxA f && isNegativeBxA g = True -- f -> ~g
+    |        isSqAntBxA g && isNegativeBxA f = True     -- g -> ~f
+    | isSqBxA (NotBxA f) && isSqBxA (NotBxA g) &&       -- (f|g) + no shared props
+          null (props f `intersect` props g) = True
 isSqBxA (ConBxA f g) = isSqBxA f && isSqBxA g
 isSqBxA (Nbox _ f) = isSqBxA f
 isSqBxA f | isSqAntBxA (NotBxA f) = True -- (~ f -> \bot)

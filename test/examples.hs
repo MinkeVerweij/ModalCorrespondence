@@ -75,6 +75,8 @@ main = hspec $ do
       it "[] McKinsey & transitivity N" $ isJust (getSqBxA1 (toModBxA (modSimp (Con (imp (Box (dia (Prp 0))) (dia (Box (Prp 0)))) (imp (dia (dia (Prp 1))) (dia (Prp 1))))))) `shouldBe` False
       it "Lob N" $ isJust (getSqBxA1 (toModBxA (modSimp (imp (Box (imp (Box (Prp 0)) (Prp 0))) (Box (Prp 0)))))) `shouldBe` False
       it "~[]<>p not Sq" $ isSqBxA (toModBxA (modSimp (Not (Box (dia (Prp 0))))) ) `shouldBe` False
+      it "~([]<>p&<>[]p)" $ isSqBxA (toModBxA (modSimp (Not (Con (Box (dia (Prp 0))) (dia (Box (Prp 0))))))) `shouldBe` False
+      it "([]<>p|<>[]p)" $ isSqBxA (toModBxA (modSimp  (dis (Box (dia (Prp 0))) (dia (Box (Prp 0)))))) `shouldBe` True
       it "[]p->p not uniform" $ isUniform (toModBxA (modSimp (imp (Box (Prp 0)) (Prp 0)))) `shouldBe` False
       it "~[]<>p & ([]p->p) has corresp." $ isJust (getSqBxA (toModBxA (modSimp (Con (Not (Box (dia (Prp 0)))) (imp (Box (Prp 0)) (Prp 0)))))) `shouldBe` True
 

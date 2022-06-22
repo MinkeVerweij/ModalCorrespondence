@@ -25,6 +25,8 @@ clusterDepth _ n = n
 impliedOrs :: FOLFormVSAnt -> Bool
 impliedOrs (Impc _ (Disjc fs)) | length fs > 3 = True
                             | otherwise = False
+impliedOrs (Impc _ (Existsc _ (Disjc fs))) | length fs > 3 = True
+                            | otherwise = False
 impliedOrs (Forallc _ f) = impliedOrs f
 impliedOrs (Existsc _ f) = impliedOrs f
 impliedOrs (Conjc fs) = any impliedOrs fs
@@ -63,7 +65,8 @@ toClusters (Existsc _ f) depth ors red clusIn clusOut = toClusters f depth ors r
 toClusters (Conjc []) _ _ _ _ _ = []
 toClusters (Conjc (f:fs)) depth ors red clusIn clusOut = toClusters f depth ors red clusIn clusOut ++ toClusters (Conjc fs) depth ors red clusIn clusOut
 toClusters (Disjc []) _ _ _ _ _ = []
-toClusters (Disjc (f:fs)) depth ors red clusIn clusOut | not (null (posForms (f:fs))) && not (null (negForms (f:fs))) = toClusters (simpFOL1 (Impc (Conjc (negForms (f:fs))) (Conjc (posForms (f:fs))))) depth ors red clusIn clusOut
+toClusters (Disjc (f:fs)) depth ors red clusIn clusOut | not (null (posForms (f:fs))) && not (null (negForms (f:fs))) = 
+    toClusters (simpFOL1 (Impc (Conjc (negForms (f:fs))) (Conjc (posForms (f:fs))))) depth ors red clusIn clusOut
             |otherwise = toClusters f depth (ors + 1) red clusIn clusOut ++ toClusters (Disjc fs) depth (ors + 1) red clusIn clusOut
 toClusters (Impc f g) depth ors red clusIn clusOut = toClusters f depth ors red clusIn clusOut ++ toClusters g (depth + 1) ors red clusIn clusOut
 toClusters (Negc (Conjc fs)) depth ors red clusIn clusOut = concat [toClusters fi depth ors red clusIn clusOut | fi <- init fs] 
