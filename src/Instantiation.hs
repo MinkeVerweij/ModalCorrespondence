@@ -8,9 +8,6 @@ import SahlqvistCheck
     First formulas concerning the 'pull diamonds' step,
     then 'reading of instances and instantiating'.
 -}
-
-
-
 -- get FO formula after pulling diamonds
 getPullDsFOL :: ModFormBxA -> FOLFormVSAnt
 getPullDsFOL f = Forallc (fst (pullDiamonds1 (standTransAnt f))) 
@@ -56,11 +53,6 @@ minimalInst k subs = map snd $ filter ((==k) . fst) subs
 -- output: disj. of all subst. of given predicate, s.t. 1 var can be applied
 getSubstitution :: Int -> [(Int, Int -> FOLFormVSAnt)] -> (Int -> FOLFormVSAnt)
 getSubstitution k subs y = Disjc [ f y | f <- minimalInst k subs ]
-
--- getSubstitution 0 (getSubstitutionsFromAnt (NotBxA (ConBxA (NotBxA (Nbox 1 (NotBxA (ConBxA (PrpBxA 0) (nDia 1 (PrpBxA 0)))))) (NotBxA (PrpBxA 0))))) 10
--- getSubstitution 0 (getSubstitutionsFromAnt (NotBxA (ConBxA (NotBxA (Nbox 1 (NotBxA (ConBxA (nDia 1 (PrpBxA 0)) (PrpBxA 0))))) (NotBxA (PrpBxA 0))))) 10
--- (standTransAnt (NotBxA (ConBxA (NotBxA (Nbox 1 (NotBxA (ConBxA (nDia 1 (PrpBxA 0)) (PrpBxA 0))))) (NotBxA (PrpBxA 0)))))
--- (standTransAnt (NotBxA (ConBxA (NotBxA (Nbox 1 (NotBxA (ConBxA (PrpBxA 0) (nDia 1 (PrpBxA 0)) )))) (NotBxA (PrpBxA 0)))))
 
 -- instantiate i.e. substitute predicates for minimal instances
 instantiate1 :: FOLFormVSAnt -> [(Int, Int -> FOLFormVSAnt)] -> FOLFormVSAnt

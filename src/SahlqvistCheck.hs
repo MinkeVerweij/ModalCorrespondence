@@ -73,5 +73,3 @@ props (ConBxA f g) = props f ++ props g
 props (NotBxA f) = props f
 props (Nbox _ f) = props f
 props _ = []
-
--- props (ConBxA (PrpBxA 0) (disBxA (PrpBxA 1) (PrpBxA 0)))

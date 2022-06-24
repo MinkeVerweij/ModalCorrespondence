@@ -34,10 +34,8 @@ simpFOL (Impc f (Disjc gs)) | f `elem` gs = Topc
 simpFOL (Impc f (Existsc _ (Disjc gs))) | f `elem` gs = Topc
 simpFOL (Impc f g) | f == g = Topc
                 | otherwise = Impc (simpFOL f) (simpFOL g)
-simpFOL (Forallc vars (Impc f (Forallc vars2 (Impc g h)))) =  Forallc (vars ++ vars2) (simpFOL (Impc (Conjc (flattenCon [f, g])) h)) --Conjc [remUnusedQuantVar (simpFOL (Forallc vars (Impc f g))) | g <- gs]
--- simpFOL (Forallc vars (Impc f (Existsc vars2 (Conjc gs)))) = Existsc vars2 (Conjc [remUnusedQuantVar (simpFOL (Forallc vars (Impc f g))) | g <- gs])
-
-
+simpFOL (Forallc vars (Impc f (Forallc vars2 (Impc g h)))) =  
+    Forallc (vars ++ vars2) (simpFOL (Impc (Conjc (flattenCon [f, g])) h))
 simpFOL (Forallc [] f) = simpFOL f
 simpFOL (Forallc xs f) = remUnusedQuantVar (Forallc xs (simpFOL f))
 
@@ -125,51 +123,41 @@ getEqVar x ((Eqdotc (VT (V i)) (VT (V j))):fs)
 getEqVar x (_:fs) = getEqVar x fs
 getEqVar _ [] = Nothing
 
-
-simpFOL4 :: FOLFormVSAnt -> FOLFormVSAnt
-simpFOL4 (Negc (Conjc fs)) =  Disjc [simpFOL2 (simpFOL4 (simpFOL1 (Negc f)))|f<- fs]
-simpFOL4 (Negc (Impc f g)) = Conjc [simpFOL1 f, simpFOL1 (Negc g)]
-simpFOL4 (Negc (Existsc vars f)) = Forallc vars (simpFOL4 (simpFOL1 (Negc f)))
-simpFOL4 (Negc (Forallc vars f)) = Existsc vars (simpFOL4 (simpFOL1 (Negc f)))
-simpFOL4 (Conjc fs) = Conjc [simpFOL4 f | f<- fs]
-simpFOL4 (Disjc fs) = Disjc [simpFOL4 f | f<- fs]
-simpFOL4 (Existsc vars f) = Existsc vars (simpFOL4 f)
-simpFOL4 (Forallc vars f) = Forallc vars (simpFOL4 f)
-simpFOL4 (Impc f g) = Impc (simpFOL4 f) (simpFOL4 g)
-simpFOL4 f = simpFOL1 f
-
-
-simpFOL5 :: FOLFormVSAnt -> FOLFormVSAnt
-simpFOL5 f | simpFOL4 f == f = f
-        | otherwise = simpFOL5 (simpFOL4 f)
-
 {- simplifying/expanding for visualization-}
--- simpFOLViz2 :: FOLFormVSAnt -> FOLFormVSAnt
--- simpFOLViz2 f | simpFOLViz1 (simpFOLViz1 f) == f = f
---             | otherwise = simpFOLViz1 (simpFOLViz1 f)
-
--- simpFOLViz2 :: FOLFormVSAnt -> FOLFormVSAnt
--- simpFOLViz2 f | simpFOLViz f == f = f
---             | otherwise = simpFOLViz2 (simpFOLViz f)
 
 simpFOLViz2 :: FOLFormVSAnt -> FOLFormVSAnt
-simpFOLViz2 f = simpFOLViz1 (simpFOL5 f)
+simpFOLViz2 f = simpFOLViz1 (simpFOLpushNeg1 f)
+
+simpFOLpushNeg :: FOLFormVSAnt -> FOLFormVSAnt
+simpFOLpushNeg (Negc (Conjc fs)) =  Disjc [simpFOL2 (simpFOLpushNeg (simpFOL1 (Negc f)))|f<- fs]
+simpFOLpushNeg (Negc (Impc f g)) = Conjc [simpFOL1 f, simpFOL1 (Negc g)]
+simpFOLpushNeg (Negc (Existsc vars f)) = Forallc vars (simpFOLpushNeg (simpFOL1 (Negc f)))
+simpFOLpushNeg (Negc (Forallc vars f)) = Existsc vars (simpFOLpushNeg (simpFOL1 (Negc f)))
+simpFOLpushNeg (Conjc fs) = Conjc [simpFOLpushNeg f | f<- fs]
+simpFOLpushNeg (Disjc fs) = Disjc [simpFOLpushNeg f | f<- fs]
+simpFOLpushNeg (Existsc vars f) = Existsc vars (simpFOLpushNeg f)
+simpFOLpushNeg (Forallc vars f) = Forallc vars (simpFOLpushNeg f)
+simpFOLpushNeg (Impc f g) = Impc (simpFOLpushNeg f) (simpFOLpushNeg g)
+simpFOLpushNeg f = simpFOL1 f
+
+
+simpFOLpushNeg1 :: FOLFormVSAnt -> FOLFormVSAnt
+simpFOLpushNeg1 f | simpFOLpushNeg f == f = f
+        | otherwise = simpFOLpushNeg1 (simpFOLpushNeg f)
 
 simpFOLViz1 :: FOLFormVSAnt -> FOLFormVSAnt
 simpFOLViz1 f | simpFOLViz f == f = f
             | otherwise = simpFOLViz1 (simpFOLViz f)
 
--- simpFOLViz1 :: FOLFormVSAnt -> FOLFormVSAnt
--- simpFOLViz1 f | simpFOLViz (simpFOLViz f) == f = f
---             | otherwise = simpFOLViz (simpFOLViz f)
-
+-- splitting implied conjuncts/disjuncts, transforming disjunctions into implications (if possible)
 simpFOLViz :: FOLFormVSAnt -> FOLFormVSAnt
 simpFOLViz (Forallc vars (Impc f (Forallc vars2 (Impc g h)))) = simpFOLViz (Forallc (vars ++ vars2)  (simpFOL1 (Impc (Conjc (flattenCon [f, g])) h)))
-simpFOLViz (Forallc vars (Impc f (Existsc vars2 (Conjc gs)))) | hasforAllImpOr gs = Existsc vars2 (Conjc [simpFOLViz (Forallc vars (Impc f g)) | g <- gs])
+simpFOLViz (Forallc vars (Impc f (Existsc vars2 (Conjc gs)))) | hasForAllImp gs = Existsc vars2 (Conjc [simpFOLViz (Forallc vars (Impc f g)) | g <- gs])
 simpFOLViz (Forallc vars (Impc f (Conjc gs))) = Conjc [simpFOLViz (Forallc vars (Impc f g)) | g <- gs]
-simpFOLViz (Forallc vars (Impc f (Disjc gs))) | hasforAllImpOr gs = Disjc [simpFOLViz (Forallc vars (Impc f g))| g <-gs]
-simpFOLViz (Conjc fs) = Conjc (flattenCon [simpFOLViz f | f <- fs])
-simpFOLViz (Disjc fs) | not (null (negForms fs)) && not (null (posForms fs)) = simpFOLViz (simpFOL3 (Impc (Conjc (negForms fs)) (Conjc (posForms fs))))
+simpFOLViz (Forallc vars (Impc f (Disjc gs))) | hasForAllImp gs = Disjc [simpFOLViz (Forallc vars (Impc f g))| g <-gs]
+simpFOLViz (Conjc fs) | not (null (snd (getVarsExForms fs))) = Existsc (snd (getVarsExForms fs)) (simpFOLViz (Conjc (flattenCon (fst (getVarsExForms fs)))))
+                    | otherwise =    Conjc (flattenCon [simpFOLViz f | f <- fs])
+simpFOLViz (Disjc fs) | not (null (negForms fs)) && not (null (posForms fs)) = simpFOLViz (simpFOL3 (Impc (Conjc (negForms fs)) (Disjc (posForms fs))))
                     | not (null (negForms fs)) && length fs > 1 = simpFOLViz (simpFOL3 (Impc (Conjc (init (negForms fs))) (Negc (last (negForms fs)))))
                     | otherwise = Disjc (flattenDis [simpFOLViz f | f <- fs])
 simpFOLViz (Existsc vars (Conjc fs)) | not (null (snd (getVarsExForms fs))) = Existsc (vars ++ snd (getVarsExForms fs)) (simpFOLViz (Conjc (flattenCon (fst (getVarsExForms fs)))))
@@ -181,23 +169,19 @@ simpFOLViz (Impc f g) = Impc (simpFOLViz f) (simpFOLViz g)
 simpFOLViz (Negc f) = Negc (simpFOLViz f)
 simpFOLViz f = f
 
-hasforAllImpOr :: [FOLFormVSAnt] -> Bool
-hasforAllImpOr [] = False
-hasforAllImpOr ((Forallc _ (Impc _ _)):_) = True
-hasforAllImpOr ((Existsc _ (Conjc fs)):rest) = hasforAllImpOr fs || hasforAllImpOr rest
-hasforAllImpOr ((Existsc _ (Disjc fs)):rest) = hasforAllImpOr fs || hasforAllImpOr rest
-hasforAllImpOr ((Disjc fs):rest) = hasforAllImpOr fs || hasforAllImpOr rest
-hasforAllImpOr ((Conjc fs):rest) = hasforAllImpOr fs || hasforAllImpOr rest
-hasforAllImpOr (_:fs) = hasforAllImpOr fs
-
-hasForAll :: [FOLFormVSAnt] -> Bool
-hasForAll [] = False
-hasForAll ((Forallc _ _):_) = True
-hasForAll (_:fs) = hasForAll fs
+-- check complexity of implied conjucntion/disjucntion (complex -> visualize w/ extra cluster)
+hasForAllImp :: [FOLFormVSAnt] -> Bool
+hasForAllImp [] = False
+hasForAllImp ((Forallc _ (Impc _ _)):_) = True
+hasForAllImp ((Existsc _ (Conjc fs)):rest) = hasForAllImp fs || hasForAllImp rest
+hasForAllImp ((Existsc _ (Disjc fs)):rest) = hasForAllImp fs || hasForAllImp rest
+hasForAllImp ((Disjc fs):rest) = hasForAllImp fs || hasForAllImp rest
+hasForAllImp ((Conjc fs):rest) = hasForAllImp fs || hasForAllImp rest
+hasForAllImp (_:fs) = hasForAllImp fs
 
 getVarsExForms :: [FOLFormVSAnt] -> ([FOLFormVSAnt], [Var])
 getVarsExForms [] = ([],[])
-getVarsExForms ((Existsc vars f):fs) = bimap (f :) (vars ++) (getVarsExForms fs) -- (f : fst (getVarsExForms fs), vars ++ snd (getVarsExForms fs))
+getVarsExForms ((Existsc vars f):fs) | hasForAllImp [f] = bimap (f :) (vars ++) (getVarsExForms fs)
 getVarsExForms (f:fs) = bimap (f :) ([] ++) (getVarsExForms fs)
 
 

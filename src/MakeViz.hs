@@ -11,13 +11,13 @@ import FOLSimplify
 
 -- preliminary check for visualization (not too many nested clusters)
 clusterDepth :: FOLFormVSAnt -> Int -> Int
-clusterDepth (Conjc fs) n | hasforAllImpOr fs = (maximum [clusterDepth f n | f <- fs ]) + 1
+clusterDepth (Conjc fs) n | hasForAllImp fs = (maximum [clusterDepth f n | f <- fs ]) + 1
                             | otherwise = n
-clusterDepth (Disjc fs) n | hasforAllImpOr fs = (maximum [clusterDepth f n | f <- fs ]) + 1
+clusterDepth (Disjc fs) n | hasForAllImp fs = (maximum [clusterDepth f n | f <- fs ]) + 1
                             | otherwise = n
-clusterDepth (Existsc _ (Conjc fs)) n | hasforAllImpOr fs = (maximum [clusterDepth f n | f <- fs ]) + 1
+clusterDepth (Existsc _ (Conjc fs)) n | hasForAllImp fs = (maximum [clusterDepth f n | f <- fs ]) + 1
                             | otherwise = n
-clusterDepth (Existsc _ (Disjc fs)) n | hasforAllImpOr fs = (maximum [clusterDepth f n | f <- fs ]) + 1
+clusterDepth (Existsc _ (Disjc fs)) n | hasForAllImp fs = (maximum [clusterDepth f n | f <- fs ]) + 1
                             | otherwise = n
 clusterDepth _ n = n
 
@@ -66,7 +66,7 @@ toClusters (Conjc []) _ _ _ _ _ = []
 toClusters (Conjc (f:fs)) depth ors red clusIn clusOut = toClusters f depth ors red clusIn clusOut ++ toClusters (Conjc fs) depth ors red clusIn clusOut
 toClusters (Disjc []) _ _ _ _ _ = []
 toClusters (Disjc (f:fs)) depth ors red clusIn clusOut | not (null (posForms (f:fs))) && not (null (negForms (f:fs))) = 
-    toClusters (simpFOL1 (Impc (Conjc (negForms (f:fs))) (Conjc (posForms (f:fs))))) depth ors red clusIn clusOut
+    toClusters (simpFOL1 (Impc (Conjc (negForms (f:fs))) (Disjc (posForms (f:fs))))) depth ors red clusIn clusOut
             |otherwise = toClusters f depth (ors + 1) red clusIn clusOut ++ toClusters (Disjc fs) depth (ors + 1) red clusIn clusOut
 toClusters (Impc f g) depth ors red clusIn clusOut = toClusters f depth ors red clusIn clusOut ++ toClusters g (depth + 1) ors red clusIn clusOut
 toClusters (Negc (Conjc fs)) depth ors red clusIn clusOut = concat [toClusters fi depth ors red clusIn clusOut | fi <- init fs] 
@@ -82,16 +82,16 @@ toClusters1 f = toClusters f 0 0 False
 toClusters2 :: FOLFormVSAnt -> Int -> Int -> [Int] -> EdgeList
 toClusters2 (Conjc fs) m k vs = concat [toClusters1 f (n, 1, []) (m, k, vs) | (f, n) <- zip fs [0..]]
 toClusters2 (Disjc fs) m  k vs = concat [toClusters1 f (n, 2, []) (m, k, vs) | (f, n) <- zip fs [0..]]
-toClusters2 (Existsc vars (Conjc fs)) m k vs | hasforAllImpOr fs = concat [toClusters1 f (n, 1, getInts vars) (m, k, vs) | (f, n) <- zip fs [0..]]
-toClusters2 (Existsc vars (Disjc fs)) m k vs | hasforAllImpOr fs = concat [toClusters1 f (n, 2, getInts vars) (m, k, vs) | (f, n) <- zip fs [0..]]
+toClusters2 (Existsc vars (Conjc fs)) m k vs | hasForAllImp fs = concat [toClusters1 f (n, 1, getInts vars) (m, k, vs) | (f, n) <- zip fs [0..]]
+toClusters2 (Existsc vars (Disjc fs)) m k vs | hasForAllImp fs = concat [toClusters1 f (n, 2, getInts vars) (m, k, vs) | (f, n) <- zip fs [0..]]
 toClusters2 f m k vs = toClusters1 f (0, 0, []) (m, k, vs)
 
 -- outer clusters
 toClusters3 :: FOLFormVSAnt -> EdgeList
 toClusters3 (Conjc fs) = concat [toClusters2 f m 1 []| (f,m) <- zip fs [0..]]
 toClusters3 (Disjc fs) = concat [toClusters2 f m 2 []| (f,m) <- zip fs [0..]]
-toClusters3 (Existsc vars (Conjc fs)) | hasforAllImpOr fs = concat [toClusters2 f m 1 (getInts vars)| (f,m) <- zip fs [0..]]
-toClusters3 (Existsc vars (Disjc fs)) | hasforAllImpOr fs =  concat [toClusters2 f m 2 (getInts vars)| (f,m) <- zip fs [0..]]
+toClusters3 (Existsc vars (Conjc fs)) | hasForAllImp fs = concat [toClusters2 f m 1 (getInts vars)| (f,m) <- zip fs [0..]]
+toClusters3 (Existsc vars (Disjc fs)) | hasForAllImp fs =  concat [toClusters2 f m 2 (getInts vars)| (f,m) <- zip fs [0..]]
 toClusters3 f = toClusters2 f 0 0 []
 
 -- ors : colors for implied disjuncts 
@@ -185,32 +185,18 @@ toGraph edges = digraph (Str "G") $ do
 asWorlds :: [Int] -> [String]
 asWorlds = map (\ k -> "w" ++ show k)
 
--- -- helper to get maxDepth (implied/dashed)
--- curClusOr1 :: Clust -> Clust -> Int -> Edge -> Bool
--- curClusOr1 cIn cOut orCur (_,_,or1,_,_,c1,c2) | orCur == 0 && cIn == c1 && cOut == c2 = True
---                                         | cIn == c1 && cOut == c2 && orCur == or1 = True
---                                         | otherwise = False
 -- helper to get maxDepth (implied/dashed)
 curClusOr1 :: Clust -> Clust -> Int -> Edge -> Bool
 curClusOr1 (cIn, cInTp, _) (cOut, cOutTp, _)  orCur (_,_,or1,_,_,(c1, c1Tp, _),(c2, c2Tp, _)) | orCur == 0 && cIn == c1 && cOut == c2
                                         && cInTp == c1Tp && cOutTp == c2Tp = True
                                         | cIn == c1 && cOut == c2 && cInTp == c1Tp && cOutTp == c2Tp && orCur == or1 = True
                                         | otherwise = False
-
--- -- is outer+inner subcluster
--- curClus1 :: Clust -> Clust -> Edge -> Bool
--- curClus1 (cIn, cInTp, _) (cOut, cOutTp, _) (_,_,_,_,_,(c1, c1Tp, _),(c2, c2Tp, _)) | cIn == c1 && cOut == c2 && cInTp == c1Tp && cOutTp == c2Tp = True
---                                     | otherwise = False                                    
+                                   
 -- is outer+inner subcluster
 curClus1 :: Clust -> Clust -> Edge -> Bool
 curClus1 cIn cOut (_,_,_,_,_,c1,c2) | cIn == c1 && cOut == c2 = True
                                     | otherwise = False
 
--- -- get the inner subcluster provided outer cluster
--- getInClustersProvOut :: EdgeList -> Clust -> [(Int,Int, [Int])]
--- getInClustersProvOut [] _ = []
--- getInClustersProvOut ((_,_,_,_,_,c1,(c2, c2Tp, _)):rest) (cOut, cOutTp, cOutV) | c2 == cOut  && c2Tp == cOutTp = nub (c1 : getInClustersProvOut rest (cOut, cOutTp, cOutV))
---                                                     | otherwise = getInClustersProvOut rest (cOut, cOutTp, cOutV)
 -- get the inner subcluster provided outer cluster
 getInClustersProvOut :: EdgeList -> Clust -> [(Int,Int, [Int])]
 getInClustersProvOut [] _ = []

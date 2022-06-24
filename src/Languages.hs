@@ -3,14 +3,7 @@ module Languages where
 -- import Stand_trans (getFresh)
 import Data.List
 
-
-type World = Integer
-type Universe = [World]
 type Proposition = Int
-type Valuation = World -> [Proposition]
-type Relation = [(World,World)]
-data KripkeModel = KrM Universe Valuation Relation
-
 
 -- 'normal' modal formulas (primitive)
 data ModForm = Prp Proposition

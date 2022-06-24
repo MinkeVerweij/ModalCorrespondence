@@ -4,16 +4,14 @@ import Parse
 import Languages
 import ModalSimplify
 import FOLCorrespondent
--- import Data.GraphViz.Types.Monadic
 import Data.GraphViz.Commands
-import GraphTest
 import SahlqvistCheck
 import MakeViz
 import FOLSimplify
 
 main :: IO ()
 main = do
-    _ <- runGraphviz example Jpeg "testgraph.jpeg"
+    -- _ <- runGraphviz example Jpeg "testgraph.jpeg"
     input <- getLine
     case parse (alexScanTokens input) of
         Left p -> error $ "error at " ++ show p
@@ -57,7 +55,7 @@ main = do
                 
               
               
--- ((p-><>p)&(<>p->p))|((q-><><>q)&(<>q-><><>q))
+-- ((p-><>p)&(<>p->p))|((q-><><>q)&(<>q-><><>q)) equiv ((p-><>p)&(<>p->p))|((q|<>q)-><><>q)
 -- ((<>[]p->[]<>p)&(p-><>p))|((<><>q-><>q)&(<>q-><><>q))
 -- ((p-><>p)|(q-><><>q))&((<>p->p)|(<>q-><><>q))
 -- p->(<>[]<>[]<>p|[]<>[]<>[]p)
@@ -73,3 +71,5 @@ main = do
 -- TOO MANY IMPLIED ORS (p&<>p&[]p&<>[]p)->[]<>p
 
 -- (p&<>p&[]p)-><>([]p|[]<>p)
+-- TOO MANY IMPLIED ORS: (p&<>p&[]p&<><>p)-><>([]p|[]<>p)
+-- TOO MANY SUBLUCTERS: ((p&<>p&[]p)-><>([]p|[]<>p))|(q-><>q)

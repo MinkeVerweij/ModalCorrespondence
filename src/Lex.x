@@ -13,28 +13,10 @@ tokens :-
   -- ignore whitespace and comments:
   $white+           ;
   "--".*            ;
-  -- keywords and punctuation:
---   "VARS"            { \ p _ -> TokenVARS              p }
---   "LAW"             { \ p _ -> TokenLAW               p }
---   "OBS"             { \ p _ -> TokenOBS               p }
---   "TRUE?"           { \ p _ -> TokenTRUEQ             p }
---   "VALID?"          { \ p _ -> TokenVALIDQ            p }
---   "WHERE?"          { \ p _ -> TokenWHEREQ            p }
---   ":"               { \ p _ -> TokenColon             p }
---   ","               { \ p _ -> TokenComma             p }
   "("               { \ p _ -> TokenOB                p }
   ")"               { \ p _ -> TokenCB                p }
---   "["               { \ p _ -> TokenCOB               p }
---   "]"               { \ p _ -> TokenCCB               p }
---   "{"               { \ p _ -> TokenSOB               p }
---   "}"               { \ p _ -> TokenSCB               p }
---   "<"               { \ p _ -> TokenLA                p }
---   ">"               { \ p _ -> TokenRA                p }
  "<>"              {\ p _ -> TokenDia                       p }
  "[]"              {\ p _ -> TokenBox                       p }
---   "!"               { \ p _ -> TokenExclam            p }
---   "?"               { \ p _ -> TokenQuestm            p }
-  -- DEL Formulas:
   "Top"             { \ p _ -> TokenTop               p }
   "Bot"             { \ p _ -> TokenBot               p }
   "~"               { \ p _ -> TokenNeg               p }
@@ -47,15 +29,6 @@ tokens :-
  "p"                { \ p _ -> TokenPrpP              p }
  "q"                { \ p _ -> TokenPrpQ              p }
  "r"                { \ p _ -> TokenPrpR              p }
-
---   "AND"             { \ p _ -> TokenCon               p }
---   "OR"              { \ p _ -> TokenDis               p }
---   "XOR"             { \ p _ -> TokenXor               p }
-
-  -- Integers and Strings:
---   $dig+             { \ p s -> TokenInt (read s)      p }
---   $alf [$alf $dig]* { \ p s -> TokenStr s             p }
-
 {
 type LexResult a = Either (Int,Int) a
 

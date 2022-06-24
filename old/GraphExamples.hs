@@ -1,5 +1,5 @@
 {-#LANGUAGE OverloadedStrings#-}
-module GraphTest where
+module GraphExamples where
 import Data.GraphViz.Types.Monadic
 import Data.GraphViz.Attributes
 import Data.GraphViz.Types
@@ -130,34 +130,3 @@ withNeg = digraph (Str "G") $ do
     cluster (Num (Int 0)) $ do
         edgeAttrs [style dotted, color Red]
         "w" --> "w1" 
-
-example :: DotGraph String
-example = digraph (Str "G") $ do
-
-   cluster (Num (Int 0)) $ do
-       graphAttrs [style filled, color LightGray]
-       nodeAttrs [style filled, color White]
-       "a0" --> "a1"
-       "a1" --> "a2"
-       "a2" --> "a3"
-       graphAttrs [textLabel "process #1"]
-
-   cluster (Num (Int 1)) $ do
-       cluster (Num (Int 2)) $ do
-           graphAttrs [textLabel "In P2", color Green]
-           "m1" --> "m1"
-       nodeAttrs [style filled]
-       "b0" --> "b1"
-       "b1" --> "b2"
-       "b2" --> "b3"
-       graphAttrs [textLabel "process #2", color Blue]
-
-   "start" --> "a0"
-   "start" --> "b0"
-   "a1" --> "b3"
-   "b2" --> "a3"
-   "a3" --> "end"
-   "b3" --> "end"
-
-   node "start" [shape MDiamond]
-   node "end" [shape MSquare]
