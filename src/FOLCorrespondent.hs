@@ -54,7 +54,7 @@ getFOLcorr f = instantiate1 (getPullDsFOL f) (getSubstitutionsFromAnt f)
 -- get FO corresp. for Sq implication, becomes multiple when OR in antecedent
 getFOLimp :: ModFormBxA -> ModFormBxA -> FOLFormVSAnt -- f -> g Sq
 getFOLimp f g | length (splitOrAnt f) == 1 = getFOLcorrNegAnt f g
-            | otherwise = Conjc (allFreshVars [getFOLcorrNegAnt fi g| fi <- splitOrAnt f] [0])
+            | otherwise = Conjc (allFreshVars [getFOLcorrNegAnt fi g| fi <- splitOrAnt f] [0]) --Conjc [getFOLcorrNegAnt fi g| fi <- splitOrAnt f]--
 
 -- move negative part of antecedent to consequent
 getFOLcorrNegAnt :: ModFormBxA -> ModFormBxA -> FOLFormVSAnt
@@ -64,7 +64,7 @@ getFOLcorrNegAnt f g | getPositiveBxA f /= f =
 
 allFreshVars :: [FOLFormVSAnt] -> [Int] -> [FOLFormVSAnt]
 allFreshVars [] _ = []
-allFreshVars (f:fs) vars = varsSub (vars \\ [0]) (getNthFresh (length (varsInFOLform2 f)) vars) f : 
+allFreshVars (f:fs) vars = varsSub (vars \\ [0]) (getNthFresh (length (varsInFOLform2 f)) (vars ++ varsInFOLform2 f)) f : 
                                 allFreshVars fs (nub (vars ++ varsInFOLform2 f))
 
 
