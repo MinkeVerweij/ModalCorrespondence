@@ -10,7 +10,7 @@ import ModalSimplify
 -- import Data.List
 
 -- main algorithm: returns whether Sq + FOL correspondent if so
-getSqBxA1 :: ModFormBxA -> Maybe FOLFormVSAnt
+getSqBxA1 :: ModFormBxA -> Maybe FOLForm
 getSqBxA1 f | isJust (getSqBxA f) = Just (simpFOL3 (fromJust (getSqBxA f)))
             | otherwise = Nothing
 
@@ -18,7 +18,7 @@ getSqBxA1 f | isJust (getSqBxA f) = Just (simpFOL3 (fromJust (getSqBxA f)))
 --(Negc (Conjc [Negc (Forallc [V 1] (Impc (Rc (VT (V 0)) (VT (V 1))) (Disjc [Eqdotc (VT (V 0)) (VT (V 1))]))),Forallc [V 2] (Impc (Rc (VT (V 0)) (VT (V 2))) (Negc (Disjc [Eqdotc (VT (V 0)) (VT (V 2))])))])))
 
 getSqBxA :: ModFormBxA -- returns Sq correspondent if any
-  -> Maybe FOLFormVSAnt
+  -> Maybe FOLForm
 getSqBxA f | isUniform f = Just (getFOLuniform f)
 getSqBxA TopBxA = Just Topc
 getSqBxA (NotBxA TopBxA) = Just (Negc Topc)
@@ -38,8 +38,8 @@ getSqBxA (Nbox n f) | isSqBxA f = Just (getFOLboxed n f)
 getSqBxA f  | isSqAntBxA (NotBxA f) = Just (getFOLimp (boxModSimp (NotBxA f)) (NotBxA TopBxA))
 getSqBxA _ = Nothing
 
-getFOLuniform :: ModFormBxA -> FOLFormVSAnt
-getFOLuniform f = simpFOL3 (standTransBxAUniform f f (V 0) [0])
+getFOLuniform :: ModFormBxA -> FOLForm
+getFOLuniform f = simpFOL3 (stUniform f f (V 0) [0])
 
 {- 
     functions to get FOL corr. of implication 
@@ -48,24 +48,28 @@ getFOLuniform f = simpFOL3 (standTransBxAUniform f f (V 0) [0])
 -}
 -- input :: Sq impl (S)
 -- output :: FOL correspondent (unsimplified)
-getFOLcorr :: ModFormBxA -> FOLFormVSAnt
+getFOLcorr :: ModFormBxA -> FOLForm
 getFOLcorr f = instantiate1 (getPullDsFOL f) (getSubstitutionsFromAnt f)
 
 -- get FO corresp. for Sq implication, becomes multiple when OR in antecedent
-getFOLimp :: ModFormBxA -> ModFormBxA -> FOLFormVSAnt -- f -> g Sq
-getFOLimp f g | length (splitOrAnt f) == 1 = getFOLcorrNegAnt f g
-            | otherwise = Conjc (allFreshVars [getFOLcorrNegAnt fi g| fi <- splitOrAnt f] [0]) --Conjc [getFOLcorrNegAnt fi g| fi <- splitOrAnt f]--
+getFOLimp :: ModFormBxA -> ModFormBxA -> FOLForm -- f -> g Sq
+getFOLimp f g = case splitOrAnt f of
+  [_] -> getFOLcorrNegAnt f g
+  fis -> Conjc (allFreshVars [getFOLcorrNegAnt fi g| fi <- fis] [0])
+
+-- getFOLimp f g | length (splitOrAnt f) == 1 = getFOLcorrNegAnt f g
+--             | otherwise = Conjc (allFreshVars [getFOLcorrNegAnt fi g| fi <- splitOrAnt f] [0]) --Conjc [getFOLcorrNegAnt fi g| fi <- splitOrAnt f]--
 
 -- move negative part of antecedent to consequent
-getFOLcorrNegAnt :: ModFormBxA -> ModFormBxA -> FOLFormVSAnt
-getFOLcorrNegAnt f g | getPositiveBxA f /= f = 
-                        getFOLcorr (impBxA  (getPositiveBxA f) (disBxA (NotBxA (getNegativeBxA f)) g))
-                    | otherwise = getFOLcorr (impBxA f g)
+getFOLcorrNegAnt :: ModFormBxA -> ModFormBxA -> FOLForm
+getFOLcorrNegAnt f g 
+    | getPositiveBxA f /= f = getFOLcorr (impBxA  (getPositiveBxA f) (disBxA (NotBxA (getNegativeBxA f)) g))
+    | otherwise = getFOLcorr (impBxA f g)
 
-allFreshVars :: [FOLFormVSAnt] -> [Int] -> [FOLFormVSAnt]
+allFreshVars :: [FOLForm] -> [Int] -> [FOLForm]
 allFreshVars [] _ = []
-allFreshVars (f:fs) vars = varsSub (vars \\ [0]) (getNthFresh (length (varsInFOLform2 f)) (vars ++ varsInFOLform2 f)) f : 
-                                allFreshVars fs (nub (vars ++ varsInFOLform2 f))
+allFreshVars (f:fs) vars = varsSub (vars \\ [0]) (getNthFresh (length (varsInFOLform f)) (vars ++ varsInFOLform f)) f : 
+                                allFreshVars fs (nub (vars ++ varsInFOLform f))
 
 
 -- get postive part (of antecedent, NO disjunctions)
@@ -110,25 +114,25 @@ boxJoin n f = Nbox n f
     functions to get FOL corr. of conj/disj of Sq formulas
 -}
 -- get FO corr. of disj. of Sq formulas 
-getFOLdisj :: ModFormBxA -> ModFormBxA -> FOLFormVSAnt -- f | g both Sq
+getFOLdisj :: ModFormBxA -> ModFormBxA -> FOLForm -- f | g both Sq
 getFOLdisj f g = Disjc [fromJust (getSqBxA f), 
-    varsSub ((varsInFOLform2 (fromJust (getSqBxA f)) `intersect` varsInFOLform2 (fromJust (getSqBxA f))) \\ [0])
-        (getNthFresh (length ((varsInFOLform2 (fromJust (getSqBxA f)) `intersect` varsInFOLform2 (fromJust (getSqBxA f)))\\[0])) (varsInFOLform2 (fromJust (getSqBxA f)) ++ varsInFOLform2 (fromJust (getSqBxA g))))
+    varsSub ((varsInFOLform (fromJust (getSqBxA f)) `intersect` varsInFOLform (fromJust (getSqBxA f))) \\ [0])
+        (getNthFresh (length ((varsInFOLform (fromJust (getSqBxA f)) `intersect` varsInFOLform (fromJust (getSqBxA f)))\\[0])) (varsInFOLform (fromJust (getSqBxA f)) ++ varsInFOLform (fromJust (getSqBxA g))))
         (fromJust (getSqBxA g))]
 
-getAllDisjs :: [ModFormBxA] -> [FOLFormVSAnt] -> [FOLFormVSAnt]
-getAllDisjs ((NotBxA (ConBxA f g)):fs) gs 
-    | isSqBxA (NotBxA f) && isSqBxA (NotBxA g) &&  null (props f `intersect` props g)
-        = getAllDisjs fs (gs ++ [fromJust (getSqBxA f),fromJust (getSqBxA g)])
-    | otherwise = getAllDisjs fs (gs ++ [fromJust (getSqBxA (NotBxA (ConBxA f g)))])
-getAllDisjs (f:fs) gs = getAllDisjs fs (gs ++ [fromJust (getSqBxA f)])
-getAllDisjs [] gs = gs
+-- getAllDisjs :: [ModFormBxA] -> [FOLForm] -> [FOLForm]
+-- getAllDisjs ((NotBxA (ConBxA f g)):fs) gs 
+--     | isSqBxA (NotBxA f) && isSqBxA (NotBxA g) &&  null (props f `intersect` props g)
+--         = getAllDisjs fs (gs ++ [fromJust (getSqBxA f),fromJust (getSqBxA g)])
+--     | otherwise = getAllDisjs fs (gs ++ [fromJust (getSqBxA (NotBxA (ConBxA f g)))])
+-- getAllDisjs (f:fs) gs = getAllDisjs fs (gs ++ [fromJust (getSqBxA f)])
+-- getAllDisjs [] gs = gs
 
 -- get FO corr. of conj. of Sq formulas
-getFOLconj :: ModFormBxA -> ModFormBxA -> FOLFormVSAnt -- f & g both Sq
+getFOLconj :: ModFormBxA -> ModFormBxA -> FOLForm -- f & g both Sq
 getFOLconj f g = Conjc [fromJust (getSqBxA f), 
-    varsSub ((varsInFOLform2 (fromJust (getSqBxA f)) `intersect` varsInFOLform2 (fromJust (getSqBxA f))) \\ [0])
-        (getNthFresh (length ((varsInFOLform2 (fromJust (getSqBxA f)) `intersect` varsInFOLform2 (fromJust (getSqBxA f)))\\[0])) (varsInFOLform2 (fromJust (getSqBxA f)) ++ varsInFOLform2 (fromJust (getSqBxA g))))
+    varsSub ((varsInFOLform (fromJust (getSqBxA f)) `intersect` varsInFOLform (fromJust (getSqBxA f))) \\ [0])
+        (getNthFresh (length ((varsInFOLform (fromJust (getSqBxA f)) `intersect` varsInFOLform (fromJust (getSqBxA f)))\\[0])) (varsInFOLform (fromJust (getSqBxA f)) ++ varsInFOLform (fromJust (getSqBxA g))))
         (fromJust (getSqBxA g))]
 
 {-
@@ -137,30 +141,30 @@ getFOLconj f g = Conjc [fromJust (getSqBxA f),
 
 -- Get Sq ant of BOXES(Sq formula)
 -- functionally same as normal getSqBxA, but keeps track of variables
-getSqBxAbox :: ModFormBxA -> Int -> [Int] -> FOLFormVSAnt
+getSqBxAbox :: ModFormBxA -> Int -> [Int] -> FOLForm
 getSqBxAbox TopBxA _ _ = Topc
 getSqBxAbox (NotBxA TopBxA) _ _ = Negc Topc
 getSqBxAbox (PrpBxA _) _ _ = Negc Topc -- p = T -> p
 getSqBxAbox (NotBxA (NotBxA f)) x vars = getSqBxAbox f x vars
 getSqBxAbox (NotBxA (ConBxA f g)) x vars |
     isSqAntBxA f && isNegativeBxA g =  varsSub -- f -> ~g
-        (varsInFOLform2 (getFOLimp f (NotBxA g)) \\ [x])
-        (getNthFresh (length (varsInFOLform2 (getFOLimp f (NotBxA g))) - 1) vars)
+        (varsInFOLform (getFOLimp f (NotBxA g)) \\ [x])
+        (getNthFresh (length (varsInFOLform (getFOLimp f (NotBxA g))) - 1) vars)
         (getFOLimp f (NotBxA g))
     | isSqAntBxA g && isNegativeBxA f =  varsSub -- g -> ~f
-        (varsInFOLform2 (getFOLimp g (NotBxA f)) \\ [x])
-        (getNthFresh (length (varsInFOLform2 (getFOLimp g (NotBxA f))) - 1) vars)
+        (varsInFOLform (getFOLimp g (NotBxA f)) \\ [x])
+        (getNthFresh (length (varsInFOLform (getFOLimp g (NotBxA f))) - 1) vars)
         (getFOLimp g (NotBxA f)) 
     | isSqBxA (NotBxA f) && isSqBxA (NotBxA g) &&  null (props f `intersect` props g) = -- ~(~f & ~g) both Sq + no shared props
             varsSub 
-            (varsInFOLform2 (getFOLdisj (NotBxA f) (NotBxA g)) \\ [x])
-            (getNthFresh (length (varsInFOLform2 (getFOLdisj (NotBxA f) (NotBxA g)))) vars)
+            (varsInFOLform (getFOLdisj (NotBxA f) (NotBxA g)) \\ [x])
+            (getNthFresh (length (varsInFOLform (getFOLdisj (NotBxA f) (NotBxA g)))) vars)
             (getFOLdisj (NotBxA f) (NotBxA g))
 getSqBxAbox (ConBxA f g) x vars | 
     isSqBxA f && isSqBxA g =
             varsSub 
-            (varsInFOLform2 (getFOLconj f g) \\ [x])
-            (getNthFresh (length (varsInFOLform2 (getFOLconj f g))) vars)
+            (varsInFOLform (getFOLconj f g) \\ [x])
+            (getNthFresh (length (varsInFOLform (getFOLconj f g))) vars)
             (getFOLconj f g)
 getSqBxAbox (Nbox n f) x vars | isSqBxA f = getFOLboxed1 n f x vars
 getSqBxAbox f _ _ | isSqAntBxA (NotBxA f) =  getFOLimp (NotBxA f) (NotBxA TopBxA)
@@ -168,11 +172,11 @@ getSqBxAbox f _ _ | isSqAntBxA (NotBxA f) =  getFOLimp (NotBxA f) (NotBxA TopBxA
 getSqBxAbox _ _ _= undefined
 
 -- with Boxed At translation
-getFOLboxed1 :: Int -> ModFormBxA -> Int -> [Int] -> FOLFormVSAnt
+getFOLboxed1 :: Int -> ModFormBxA -> Int -> [Int] -> FOLForm
 getFOLboxed1 n f x vars = (\y -> Forallc [V y] 
     (Impc (boxedR n vars x y) 
         (varsSub [x] [y] (getSqBxAbox f x (vars ++ getNthFresh n vars))))) (last (getNthFresh n vars))
 
 -- on first call at variable x (V 0)
-getFOLboxed :: Int -> ModFormBxA -> FOLFormVSAnt
+getFOLboxed :: Int -> ModFormBxA -> FOLForm
 getFOLboxed n f = getFOLboxed1 n f 0 [0]

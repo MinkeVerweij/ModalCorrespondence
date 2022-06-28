@@ -8,9 +8,10 @@ import Data.Bits
 import Data.List
 import Data.GraphViz (ToGraphID(toGraphID))
 import FOLSimplify
+-- import Data.GraphViz.Attributes.Colors.SVG
 
 -- preliminary check for visualization (not too many nested clusters)
-clusterDepth :: FOLFormVSAnt -> Int -> Int
+clusterDepth :: FOLForm -> Int -> Int
 clusterDepth (Conjc fs) n | hasForAllImp fs = (maximum [clusterDepth f n | f <- fs ]) + 1
                             | otherwise = n
 clusterDepth (Disjc fs) n | hasForAllImp fs = (maximum [clusterDepth f n | f <- fs ]) + 1
@@ -19,10 +20,12 @@ clusterDepth (Existsc _ (Conjc fs)) n | hasForAllImp fs = (maximum [clusterDepth
                             | otherwise = n
 clusterDepth (Existsc _ (Disjc fs)) n | hasForAllImp fs = (maximum [clusterDepth f n | f <- fs ]) + 1
                             | otherwise = n
+clusterDepth (Forallc _ (Disjc fs)) n | hasForAllImp fs = (maximum [clusterDepth f n | f <- fs ]) + 1
+                            | otherwise = n
 clusterDepth _ n = n
 
 -- preliminary check for visualization (not too implied ors)
-impliedOrs :: FOLFormVSAnt -> Bool
+impliedOrs :: FOLForm -> Bool
 impliedOrs (Impc _ (Disjc fs)) | length fs > 3 = True
                             | otherwise = False
 impliedOrs (Impc _ (Existsc _ (Disjc fs))) | length fs > 3 = True
@@ -53,13 +56,14 @@ type Edge = ((String, String), Int, Int, Bool, Bool, Clust, Clust)
 type Clust = (Int, Int, [Int])
 
 
-toClusters :: FOLFormVSAnt -> Int -> Int -> Bool -> Clust -> Clust -> EdgeList
+toClusters :: FOLForm -> Int -> Int -> Bool -> Clust -> Clust -> EdgeList
 toClusters Topc _ _ _ _ _ = undefined
 toClusters (Pc _ _) _ _ _ _ _ = undefined
-toClusters (Rc (VT (V k)) (VT (V j))) depth ors red clusIn clusOut = [(("w" ++ show k, "w" ++ show j), depth, ors, False, red, clusIn, clusOut)]
+toClusters (Rc (VT (V k)) (VT (V j))) depth ors red clusIn clusOut = [(("x" ++ show k, "x" ++ show j), depth, ors, False, red, clusIn, clusOut)]
 toClusters (Rc _ _) _ _ _ _ _  = undefined
-toClusters (Eqdotc (VT (V k)) (VT (V j))) depth ors red clusIn clusOut = [(("w" ++ show j, "w" ++ show k), depth, ors, True, red, clusIn, clusOut)]
+toClusters (Eqdotc (VT (V k)) (VT (V j))) depth ors red clusIn clusOut = [(("x" ++ show j, "x" ++ show k), depth, ors, True, red, clusIn, clusOut)]
 toClusters (Eqdotc _ _) _ _ _ _ _ = undefined
+-- toClusters (Forallc vars (Impc f (Disjc gs))) depth ors red clusIn clus
 toClusters (Forallc _ f) depth ors red clusIn clusOut = toClusters f depth ors red clusIn clusOut
 toClusters (Existsc _ f) depth ors red clusIn clusOut = toClusters f depth ors red clusIn clusOut
 toClusters (Conjc []) _ _ _ _ _ = []
@@ -75,28 +79,30 @@ toClusters (Negc (Existsc _ f)) depth ors red clusIn clusOut = toClusters (Negc 
 toClusters (Negc f) depth ors red clusIn clusOut = toClusters f depth ors (xor red True) clusIn clusOut
 
 -- helper: sets depth, ors, eq to default for every (sub)cluster
-toClusters1 :: FOLFormVSAnt -> (Int,  Int, [Int]) -> Clust -> EdgeList
+toClusters1 :: FOLForm -> (Int,  Int, [Int]) -> Clust -> EdgeList
 toClusters1 f = toClusters f 0 0 False
 
 -- inner clusters
-toClusters2 :: FOLFormVSAnt -> Int -> Int -> [Int] -> EdgeList
+toClusters2 :: FOLForm -> Int -> Int -> [Int] -> EdgeList
 toClusters2 (Conjc fs) m k vs = concat [toClusters1 f (n, 1, []) (m, k, vs) | (f, n) <- zip fs [0..]]
 toClusters2 (Disjc fs) m  k vs = concat [toClusters1 f (n, 2, []) (m, k, vs) | (f, n) <- zip fs [0..]]
 toClusters2 (Existsc vars (Conjc fs)) m k vs | hasForAllImp fs = concat [toClusters1 f (n, 1, getInts vars) (m, k, vs) | (f, n) <- zip fs [0..]]
 toClusters2 (Existsc vars (Disjc fs)) m k vs | hasForAllImp fs = concat [toClusters1 f (n, 2, getInts vars) (m, k, vs) | (f, n) <- zip fs [0..]]
+toClusters2 (Forallc vars (Disjc fs)) m  k vs = concat [toClusters1 f (n, 2, getInts vars) (m, k, vs) | (f, n) <- zip fs [0..]]
 toClusters2 f m k vs = toClusters1 f (0, 0, []) (m, k, vs)
 
 -- outer clusters
-toClusters3 :: FOLFormVSAnt -> EdgeList
+toClusters3 :: FOLForm -> EdgeList
 toClusters3 (Conjc fs) = concat [toClusters2 f m 1 []| (f,m) <- zip fs [0..]]
 toClusters3 (Disjc fs) = concat [toClusters2 f m 2 []| (f,m) <- zip fs [0..]]
 toClusters3 (Existsc vars (Conjc fs)) | hasForAllImp fs = concat [toClusters2 f m 1 (getInts vars)| (f,m) <- zip fs [0..]]
 toClusters3 (Existsc vars (Disjc fs)) | hasForAllImp fs =  concat [toClusters2 f m 2 (getInts vars)| (f,m) <- zip fs [0..]]
+toClusters3 (Forallc vars (Disjc fs)) | hasForAllImp fs = concat [toClusters2 f m 2 (getInts vars)| (f,m) <- zip fs [0..]]
 toClusters3 f = toClusters2 f 0 0 []
 
 -- ors : colors for implied disjuncts 
 myColors :: [X11Color]
-myColors = [Black, SpringGreen, DarkViolet, SandyBrown]
+myColors = [Black, DarkGreen, DarkViolet, SandyBrown]
 
 toGraph :: EdgeList -> DotGraph String
 toGraph edges = digraph (Str "G") $ do
@@ -106,14 +112,14 @@ toGraph edges = digraph (Str "G") $ do
         (if nao == 1 then 
             (if null outVars then 
                 do graphAttrs [textLabel "Conjunction (∧)", color Black]
-            else graphAttrs [toLabel ("∃ " ++ concatMap (\ var -> "w" ++ show var ++ " ") outVars ++ "s.t. Conjunction (∧)"::String), color Black]
+            else graphAttrs [toLabel ("∃ " ++ concatMap (\ var -> "x" ++ show var ++ " ") outVars ++ "s.t. Conjunction (∧)"::String), color Black]
             )
             -- do
             -- graphAttrs [textLabel "Conjunction (∧)", color Black]
         else (if nao == 2 then
                 (if null outVars then 
                     do graphAttrs [textLabel "Disjunction (∨)", color Black]
-                else graphAttrs [toLabel ("Exists" ++ concatMap (\ var -> "w" ++ show var ++ " ") outVars ++ "Disjunction (∨)"::String), color Black]
+                else graphAttrs [toLabel ("∀" ++ concatMap (\ var -> "x" ++ show var ++ " ") outVars ++ "Disjunction (∨)"::String), color Black]
                 )
             -- graphAttrs [textLabel "Disjunction (∨)", color Black]
             else graphAttrs [textLabel "", color White]
@@ -125,14 +131,14 @@ toGraph edges = digraph (Str "G") $ do
                 (if naoIn == 1 then 
                     (if null inVars then 
                         do graphAttrs [textLabel "Conjunction (∧)", color Black]
-                    else graphAttrs [toLabel ("∃ " ++ concatMap (\ var -> "w" ++ show var ++ " ") inVars ++ "s.t. Conjunction (∧)"::String), color Black]
+                    else graphAttrs [toLabel ("∃ " ++ concatMap (\ var -> "x" ++ show var ++ " ") inVars ++ "s.t. Conjunction (∧)"::String), color Black]
                     )
                     -- do
                     -- graphAttrs [textLabel "Conjunction (∧)", color Black]
                 else (if naoIn == 2 then
                         (if null inVars then 
                             do graphAttrs [textLabel "Disjunction (∨)", color Black]
-                        else graphAttrs [toLabel ("Exists" ++ concatMap (\ var -> "w" ++ show var ++ " ") inVars ++ "Disjunction (∨)"::String), color Black]
+                        else graphAttrs [toLabel ("∀" ++ concatMap (\ var -> "x" ++ show var ++ " ") inVars ++ "Disjunction (∨)"::String), color Black]
                         )
                     -- graphAttrs [textLabel "Disjunction (∨)", color Black]
                     else graphAttrs [textLabel "", color White]
@@ -152,24 +158,46 @@ toGraph edges = digraph (Str "G") $ do
 
                         -- locality of corr. + implied worlds
                         node n1 [color $ 
-                                    -- if s1 `elem` asWorlds outVars || s1 `elem` asWorlds inVars then do DarkGreen
+                                    -- if s1 `elem` asWorlds outVars || s1 `elem` asWorlds inVars then do DarkOliveGreen
                                     --     else Black, 
-                                    if s1 `elem` asWorlds outVars then do DarkGreen
-                                        else (if s1 `elem` asWorlds inVars then do DarkGreen else Black), 
-                            if s1 == "w0" then do textLabel "w" else toLabel (s1::String),
-                            shape $ if s1 == "w0" then do DoubleCircle else Circle]
+                                    if s1 `elem` asWorlds inVars then
+                                        (if naoIn == 2 then do Blue
+                                        else (if naoIn == 1 then do DarkOliveGreen
+                                            else (if s1 `elem` asWorlds outVars then
+                                                (if nao == 2 then do Blue
+                                                else (if nao ==1 then do DarkOliveGreen else Black)) else Black)))
+                                    else (if s1 `elem` asWorlds outVars then
+                                                (if nao == 2 then do Blue
+                                                else (if nao ==1 then do DarkOliveGreen else Black)) else Black),
+                                    -- if s1 `elem` asWorlds outVars then 
+                                    --     (if nao == 2 then do Blue
+                                    --     else DarkOliveGreen)
+                                    -- else Black,
+                                    -- if s1 `elem` asWorlds outVars then do DarkOliveGreen
+                                    --     else (if s1 `elem` asWorlds inVars then do DarkOliveGreen else Black), 
+                            if s1 == "x0" then do textLabel "x" else toLabel (s1::String),
+                            shape $ if s1 == "x0" then do DoubleCircle else Circle]
                         node n2 [color $ 
-                                    -- if s1 `elem` asWorlds outVars || s1 `elem` asWorlds inVars then do DarkGreen
+                                    -- if s1 `elem` asWorlds outVars || s1 `elem` asWorlds inVars then do DarkOliveGreen
                                     --     else Black, 
-                                if s2 `elem` asWorlds outVars then do DarkGreen
-                                        else (if s2 `elem` asWorlds inVars then do DarkGreen else Black), 
-                            if s2 == "w0" then do textLabel "w" else toLabel (s2::String),
-                            shape $ if s2 == "w0" then do DoubleCircle else Circle]
+                                if s2 `elem` asWorlds inVars then
+                                        (if naoIn == 2 then do Blue
+                                        else (if naoIn == 1 then do DarkOliveGreen
+                                            else (if s2 `elem` asWorlds outVars then
+                                                (if nao == 2 then do Blue
+                                                else (if nao ==1 then do DarkOliveGreen else Black)) else Black)))
+                                    else (if s2 `elem` asWorlds outVars then
+                                                (if nao == 2 then do Blue
+                                                else (if nao ==1 then do DarkOliveGreen else Black)) else Black),
+                                -- if s2 `elem` asWorlds outVars then do DarkOliveGreen
+                                --         else (if s2 `elem` asWorlds inVars then do DarkOliveGreen else Black), 
+                            if s2 == "x0" then do textLabel "x" else toLabel (s2::String),
+                            shape $ if s2 == "x0" then do DoubleCircle else Circle]
 
                         edgeAttrs [ style $ if depth == maxDep then dashed else solid
                                 , color $ if red then Red else myColors!!ors
                                 , edgeEnds Forward
-                                , textLabel $ if red then " x " else ""
+                                , textLabel $ if red then " × " else ""
                                 , arrowTo $ if red then box else normal]
                         if eq then do
                             edgeAttrs [style dotted, color (myColors!!ors), edgeEnds NoDir, textLabel "  = "]
@@ -183,7 +211,7 @@ toGraph edges = digraph (Str "G") $ do
         ) (zipGrIDs (getOutClusters edges) (getOutClusters edges))
 
 asWorlds :: [Int] -> [String]
-asWorlds = map (\ k -> "w" ++ show k)
+asWorlds = map (\ k -> "x" ++ show k)
 
 -- helper to get maxDepth (implied/dashed)
 curClusOr1 :: Clust -> Clust -> Int -> Edge -> Bool
@@ -217,9 +245,9 @@ zipGrIDs (i:rest) ((j1,j2,_):rest2) = (i,toGraphID (j1 * 10 + j2)) : zipGrIDs re
 topViz :: DotGraph String
 topViz = digraph (Str "G") $ do
         graphAttrs [style solid, color White]
-        node "w" [shape DoubleCircle, color Black]
+        node "x" [shape DoubleCircle, color Black]
 
 botViz :: DotGraph String
 botViz = digraph (Str "G") $ do
         graphAttrs [style solid, color White]
-        node "w" [shape DoubleCircle, color Red]
+        node "x" [shape DoubleCircle, color Red]

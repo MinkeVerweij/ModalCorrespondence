@@ -6,13 +6,13 @@ import Test.Hspec
 -- import Test.QuickCheck (expectFailure,(===))
 
 import FOLCorrespondent
-import Languages
 import ModalSimplify
 import StandTrans
 import FOLSimplify
 import Instantiation
 import SahlqvistCheck
 import Data.Maybe
+import Languages
 
 main :: IO ()
 main = hspec $ do
@@ -58,7 +58,7 @@ main = hspec $ do
 
     describe "get used variables in FOL form " $ do
       it "6 box/dia (in antecedent) -> 7 variables" $
-        sort (varsInFOLform2 (standTransAnt (impBxA (ConBxA (nDia 2 (Nbox 2 (PrpBxA 0))) (ConBxA (nDia 1 (PrpBxA 1)) (Nbox 1 (PrpBxA 2))))
+        sort (varsInFOLform (standTransAnt (impBxA (ConBxA (nDia 2 (Nbox 2 (PrpBxA 0))) (ConBxA (nDia 1 (PrpBxA 1)) (Nbox 1 (PrpBxA 2))))
          (nDia 1 (disBxA (PrpBxA 0) (Nbox 2 (PrpBxA 1))))))) `shouldBe` [0..6]
 
     describe "get substitution of predicate, disj. of when occurs as(boxed) atom in antecedent" $ do
@@ -83,7 +83,7 @@ main = hspec $ do
 
 -- functions for testing
 
-mainOperatorFOL :: FOLFormVSAnt -> String
+mainOperatorFOL :: FOLForm -> String
 mainOperatorFOL Topc = "Top"
 mainOperatorFOL (Pc _ _) = "Predicate"
 mainOperatorFOL (Rc _ _) = "Relation"
@@ -95,6 +95,6 @@ mainOperatorFOL (Impc _ _) = "Implication"
 mainOperatorFOL (Forallc _ _) = "Universal Quantifier"
 mainOperatorFOL (Existsc _ _) = "Existential Quantifier"
 
-elemsInDisj :: FOLFormVSAnt -> Int
+elemsInDisj :: FOLForm -> Int
 elemsInDisj (Disjc f) = length f
 elemsInDisj _ = undefined

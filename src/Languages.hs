@@ -73,22 +73,23 @@ newtype Var = V Int deriving(Eq, Ord, Show)
 data Term = VT Var | C Int deriving(Eq, Ord, Show)
 
 ppTerm :: Term -> String
-ppTerm (VT (V i)) = "x_" ++ show i
+ppTerm (VT (V i)) | i == 0 = "x"
+                | otherwise = "x_" ++ show i
 ppTerm (C i) = "c_" ++ show i
 
 -- FOL 2 (list conj. + non-primitive)
-data FOLFormVSAnt = Pc Int Term | Rc Term Term | Eqdotc Term Term |
-                    Negc FOLFormVSAnt | 
-                    Conjc [FOLFormVSAnt] |
-                    Impc FOLFormVSAnt FOLFormVSAnt | 
-                    Disjc [FOLFormVSAnt] |
-                    Forallc [Var] FOLFormVSAnt |
-                    Existsc [Var] FOLFormVSAnt |
+data FOLForm = Pc Int Term | Rc Term Term | Eqdotc Term Term |
+                    Negc FOLForm | 
+                    Conjc [FOLForm] |
+                    Impc FOLForm FOLForm | 
+                    Disjc [FOLForm] |
+                    Forallc [Var] FOLForm |
+                    Existsc [Var] FOLForm |
                     Topc
                     deriving(Eq, Ord, Show)
 
 -- print FOL nicely in terminal
-ppFOLForm :: FOLFormVSAnt -> String
+ppFOLForm :: FOLForm -> String
 ppFOLForm Topc = "T"
 ppFOLForm (Negc Topc) = "⊥"
 ppFOLForm (Pc i t) = "P_" ++ show i ++ " " ++ ppTerm t
@@ -103,11 +104,11 @@ ppFOLForm (Forallc ((V i):xs) f) = "∀x_" ++ show i ++ " " ++ ppFOLForm (Forall
 ppFOLForm (Existsc [] f) = ppFOLForm f
 ppFOLForm (Existsc ((V i):xs) f) = "∃x_" ++ show i ++ " " ++ ppFOLForm (Existsc xs f)
 
-isConj :: FOLFormVSAnt -> Bool
+isConj :: FOLForm -> Bool
 isConj (Conjc _) = True
 isConj _ = False
 
-isDisj :: FOLFormVSAnt -> Bool
+isDisj :: FOLForm -> Bool
 isDisj (Disjc _) = True
 isDisj _ = False
 
@@ -121,7 +122,7 @@ getNthFresh 0 li = [getFresh li]
 getNthFresh n li = take n ([0..] \\ li)
 
 -- boxed R as defined in book
-boxedR :: Int -> [Int] -> Int -> (Int -> FOLFormVSAnt)
+boxedR :: Int -> [Int] -> Int -> (Int -> FOLForm)
 boxedR 0 _ x y = (Eqdotc (VT (V x)) . VT . V) y
 boxedR 1 _ x y = Rc (VT (V x))  (VT (V y))
 boxedR n vars x y = Existsc (map V (getNthFresh (n -1) vars)) 

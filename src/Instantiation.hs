@@ -9,21 +9,21 @@ import SahlqvistCheck
     then 'reading of instances and instantiating'.
 -}
 -- get FO formula after pulling diamonds
-getPullDsFOL :: ModFormBxA -> FOLFormVSAnt
+getPullDsFOL :: ModFormBxA -> FOLForm
 getPullDsFOL f = Forallc (fst (pullDiamonds1 (standTransAnt f))) 
     (Impc 
         (Conjc (snd (pullDiamonds1 (standTransAnt f)))) 
-        (standTransBxA (getSqCsqBxA f) (V 0) (varsInFOLform2 (standTransAnt f)))
+        (standTransBxA (getSqCsqBxA f) (V 0) (varsInFOLform (standTransAnt f)))
     )
 
 
 -- input: Sq Antecedent (S)
 -- output: diavars, REL, (Sub BoxAtom: k (P id), sigma(P_k))
-pullDiamonds1 :: FOLFormVSAnt -> ([Var], [FOLFormVSAnt])
+pullDiamonds1 :: FOLForm -> ([Var], [FOLForm])
 pullDiamonds1 f = getDiaRels f [] []
 
 -- get variables (diamonds to pull) and relations REL
-getDiaRels :: FOLFormVSAnt -> [Var] -> [FOLFormVSAnt] -> ([Var], [FOLFormVSAnt])
+getDiaRels :: FOLForm -> [Var] -> [FOLForm] -> ([Var], [FOLForm])
 getDiaRels (Existsc vars f) diavar rels = addVarRels (vars, []) (getDiaRels f diavar rels)
 getDiaRels (Conjc [f]) diavar rels = getDiaRels f diavar rels
 getDiaRels (Conjc (x:xs)) diavar rels = addVarRels (getDiaRels x diavar rels) (getDiaRels (Conjc xs) diavar rels)
@@ -31,31 +31,31 @@ getDiaRels (Rc t1 t2) diavar rels = (diavar, nub(Rc t1 t2 : rels))
 getDiaRels _ diavar rels = (diavar, rels)
 
 -- helper getDiaRels
-addVarRels :: ([Var], [FOLFormVSAnt]) -> ([Var], [FOLFormVSAnt]) -> ([Var], [FOLFormVSAnt])
+addVarRels :: ([Var], [FOLForm]) -> ([Var], [FOLForm]) -> ([Var], [FOLForm])
 addVarRels (vs1, rs1) (vs2, rs2) = (nub vs1 ++ vs2, nub rs1 ++ rs2)
 
 -- standard translation of antecedent (at x)
-standTransAnt :: ModFormBxA -> FOLFormVSAnt
+standTransAnt :: ModFormBxA -> FOLForm
 standTransAnt f = fst (standTransBxAgBA (getSqAntBxA f) (V 0) [0] [])
 
 -- substitution 'dictionary' of antecedent
 -- get (Pred id int, substitution as function of variable id int)
-getSubstitutionsFromAnt :: ModFormBxA  -> [(Int, Int -> FOLFormVSAnt)]
+getSubstitutionsFromAnt :: ModFormBxA  -> [(Int, Int -> FOLForm)]
 getSubstitutionsFromAnt f = snd (standTransBxAgBA (getSqAntBxA f) (V 0) [0] [])
 
 -- get minimal instances for every predicate
 -- input: Pred. id, list of all possible substitutions [(pred id, subst(var))]
 -- output: list of substitutions for given pred id
-minimalInst :: Int -> [(Int, Int -> FOLFormVSAnt)] -> [Int -> FOLFormVSAnt]
+minimalInst :: Int -> [(Int, Int -> FOLForm)] -> [Int -> FOLForm]
 minimalInst k subs = map snd $ filter ((==k) . fst) subs
 
 -- makes disjunction over minimal instances provided a predicate (id)
 -- output: disj. of all subst. of given predicate, s.t. 1 var can be applied
-getSubstitution :: Int -> [(Int, Int -> FOLFormVSAnt)] -> (Int -> FOLFormVSAnt)
+getSubstitution :: Int -> [(Int, Int -> FOLForm)] -> (Int -> FOLForm)
 getSubstitution k subs y = Disjc [ f y | f <- minimalInst k subs ]
 
 -- instantiate i.e. substitute predicates for minimal instances
-instantiate1 :: FOLFormVSAnt -> [(Int, Int -> FOLFormVSAnt)] -> FOLFormVSAnt
+instantiate1 :: FOLForm -> [(Int, Int -> FOLForm)] -> FOLForm
 instantiate1 (Pc k (VT (V x))) subs | not (null (minimalInst k subs)) =  getSubstitution k subs x
         | otherwise = Negc (Eqdotc (VT (V x)) (VT (V x)))
 instantiate1 (Rc t1 t2) _ = Rc t1 t2

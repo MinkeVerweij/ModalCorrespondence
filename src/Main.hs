@@ -30,16 +30,17 @@ main = do
               else putStrLn "Not uniform.")
               -- print folF
               -- print (simpFOLViz2 folF)
-              (if folF == Topc then do
+              (if simpFOLViz2 folF == Topc then do
                 _ <- runGraphviz topViz Jpeg "FOLCorrVis.jpeg"
-                putStrLn ("First-Order Correspondent: " ++ ppFOLForm folF)
-              else (if folF == Negc Topc then do
+                putStrLn ("First-Order Correspondent: " ++ ppFOLForm (simpFOLViz2 folF))
+              else (if simpFOLViz2 folF == Negc Topc then do
                       _ <- runGraphviz botViz Jpeg "FOLCorrVis.jpeg"
-                      putStrLn ("First-Order Correspondent: " ++ ppFOLForm folF)
+                      putStrLn ("First-Order Correspondent: " ++ ppFOLForm (simpFOLViz2 folF))
                     else do
                       putStrLn ("First-Order Correspondent: " ++ ppFOLForm folF)
                       (if clusterDepth (simpFOLViz2 folF) 0 < 3 then
                         (if not (impliedOrs (simpFOLViz2 folF)) then do
+                          _ <- runGraphviz (toGraph (toClusters3 (simpFOLViz2 folF))) Pdf "FOLCorrVis.pdf"
                           _ <- runGraphviz (toGraph (toClusters3 (simpFOLViz2 folF))) Jpeg "FOLCorrVis.jpeg"
                           putStrLn ("Formula simplified for visualisation: " ++ ppFOLForm (simpFOLViz2 folF))
                         else do
@@ -71,5 +72,10 @@ main = do
 -- TOO MANY IMPLIED ORS (p&<>p&[]p&<>[]p)->[]<>p
 
 -- (p&<>p&[]p)-><>([]p|[]<>p)
+-- ((p&<>p&[]p)-><>[]p)|((q&<>q&[]q)-><>[]<>q)
 -- TOO MANY IMPLIED ORS: (p&<>p&[]p&<><>p)-><>([]p|[]<>p)
--- TOO MANY SUBLUCTERS: ((p&<>p&[]p)-><>([]p|[]<>p))|(q-><>q)
+-- TOO MANY SUBLUCTERS: ((p&<>p&[]p)-><>([]p|[]<>p))|(q-><>q) , p->(<>[]p|<>(<>p|[]<>p))
+
+
+-- CURRENTLY (<>p-><>[]p)|(<>q->[]<>q) and <>p->(<>[]p|[]<>p) have SAME vis. but left is OR (...) right FORALL X1 OR (...)
+-- Can we have exists xi disj? (If no, can reuse variable list in clusters to signify diff by forall xi disj (to distinguis from regular disj.))
