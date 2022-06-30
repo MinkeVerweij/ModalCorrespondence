@@ -7,13 +7,15 @@ import Data.Bits
 -}
 isSqBxA :: ModFormBxA -> Bool
 isSqBxA (NotBxA (NotBxA f)) = isSqBxA f
-isSqBxA (NotBxA (ConBxA f g)) | isSqAntBxA f && isNegativeBxA g = True -- f -> ~g
-    |        isSqAntBxA g && isNegativeBxA f = True     -- g -> ~f
-    | isSqBxA (NotBxA f) && isSqBxA (NotBxA g) &&       -- (f|g) + no shared props
+isSqBxA (NotBxA (ConBxA f g)) 
+        | isSqAntBxA f && isNegativeBxA g = True -- f -> ~g
+        |  isSqAntBxA g && isNegativeBxA f = True -- g -> ~f
+        | isSqBxA (NotBxA f) && isSqBxA (NotBxA g) && -- (f|g) + no shared props
           null (props f `intersect` props g) = True
 isSqBxA (ConBxA f g) = isSqBxA f && isSqBxA g
 isSqBxA (Nbox _ f) = isSqBxA f
-isSqBxA f | isSqAntBxA (NotBxA f) = True -- (~ f -> \bot)
+isSqBxA f 
+        | isSqAntBxA (NotBxA f) = True -- (~ f -> \bot)
         | isNegativeBxA (NotBxA f) = True -- mono. pos : T -> f
 isSqBxA _ = False
 
@@ -38,7 +40,8 @@ isNegativeBxA (PrpBxA _) = False
 isNegativeBxA (NotBxA (PrpBxA _)) = True
 isNegativeBxA (NotBxA (Nbox _ (NotBxA f))) = isNegativeBxA f
 isNegativeBxA (NotBxA (Nbox _ f)) = isNegativeBxA (NotBxA f)
-isNegativeBxA (NotBxA (ConBxA f g)) = isNegativeBxA (NotBxA f) && isNegativeBxA (NotBxA g) && isUniform f && isUniform g
+isNegativeBxA (NotBxA (ConBxA f g)) = 
+        isNegativeBxA (NotBxA f) && isNegativeBxA (NotBxA g) && isUniform f && isUniform g
 isNegativeBxA (NotBxA (NotBxA f)) = isNegativeBxA f
 isNegativeBxA (ConBxA f g) = isNegativeBxA f && isNegativeBxA g
 isNegativeBxA (Nbox _ f) = isNegativeBxA f

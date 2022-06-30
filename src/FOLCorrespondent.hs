@@ -14,9 +14,6 @@ getSqBxA1 :: ModFormBxA -> Maybe FOLForm
 getSqBxA1 f | isJust (getSqBxA f) = Just (simpFOL3 (fromJust (getSqBxA f)))
             | otherwise = Nothing
 
--- Forallc [] (Impc (Conjc []) 
---(Negc (Conjc [Negc (Forallc [V 1] (Impc (Rc (VT (V 0)) (VT (V 1))) (Disjc [Eqdotc (VT (V 0)) (VT (V 1))]))),Forallc [V 2] (Impc (Rc (VT (V 0)) (VT (V 2))) (Negc (Disjc [Eqdotc (VT (V 0)) (VT (V 2))])))])))
-
 getSqBxA :: ModFormBxA -- returns Sq correspondent if any
   -> Maybe FOLForm
 getSqBxA f | isUniform f = Just (getFOLuniform f)
@@ -57,9 +54,6 @@ getFOLimp f g = case splitOrAnt f of
   [_] -> getFOLcorrNegAnt f g
   fis -> Conjc (allFreshVars [getFOLcorrNegAnt fi g| fi <- fis] [0])
 
--- getFOLimp f g | length (splitOrAnt f) == 1 = getFOLcorrNegAnt f g
---             | otherwise = Conjc (allFreshVars [getFOLcorrNegAnt fi g| fi <- splitOrAnt f] [0]) --Conjc [getFOLcorrNegAnt fi g| fi <- splitOrAnt f]--
-
 -- move negative part of antecedent to consequent
 getFOLcorrNegAnt :: ModFormBxA -> ModFormBxA -> FOLForm
 getFOLcorrNegAnt f g 
@@ -70,7 +64,6 @@ allFreshVars :: [FOLForm] -> [Int] -> [FOLForm]
 allFreshVars [] _ = []
 allFreshVars (f:fs) vars = varsSub (vars \\ [0]) (getNthFresh (length (varsInFOLform f)) (vars ++ varsInFOLform f)) f : 
                                 allFreshVars fs (nub (vars ++ varsInFOLform f))
-
 
 -- get postive part (of antecedent, NO disjunctions)
 getPositiveBxA :: ModFormBxA -> ModFormBxA
@@ -120,13 +113,6 @@ getFOLdisj f g = Disjc [fromJust (getSqBxA f),
         (getNthFresh (length ((varsInFOLform (fromJust (getSqBxA f)) `intersect` varsInFOLform (fromJust (getSqBxA f)))\\[0])) (varsInFOLform (fromJust (getSqBxA f)) ++ varsInFOLform (fromJust (getSqBxA g))))
         (fromJust (getSqBxA g))]
 
--- getAllDisjs :: [ModFormBxA] -> [FOLForm] -> [FOLForm]
--- getAllDisjs ((NotBxA (ConBxA f g)):fs) gs 
---     | isSqBxA (NotBxA f) && isSqBxA (NotBxA g) &&  null (props f `intersect` props g)
---         = getAllDisjs fs (gs ++ [fromJust (getSqBxA f),fromJust (getSqBxA g)])
---     | otherwise = getAllDisjs fs (gs ++ [fromJust (getSqBxA (NotBxA (ConBxA f g)))])
--- getAllDisjs (f:fs) gs = getAllDisjs fs (gs ++ [fromJust (getSqBxA f)])
--- getAllDisjs [] gs = gs
 
 -- get FO corr. of conj. of Sq formulas
 getFOLconj :: ModFormBxA -> ModFormBxA -> FOLForm -- f & g both Sq
