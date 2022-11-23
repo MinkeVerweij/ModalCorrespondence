@@ -1,0 +1,5 @@
+dist
+dist-newstyle
+result
+src
+.ghc.*
