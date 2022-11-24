@@ -1,0 +1,71 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.35.0.
+--
+-- see: https://github.com/sol/hpack
+
+name:           ModalCorrespondence
+version:        0.1.0.0
+synopsis:       Automated Modal Correspondence
+description:    Please see the README on GitHub at <https://github.com/MinkeVerweij/ModalCorrespondence#readme>
+category:       Logic
+homepage:       https://github.com/MinkeVerweij/ModalCorrespondence#readme
+bug-reports:    https://github.com/MinkeVerweij/ModalCorrespondence/issues
+author:         Minke Verweij
+maintainer:     example@example.com
+copyright:      2022 Minke Verweij
+license:        BSD3
+license-file:   LICENSE
+build-type:     Simple
+extra-source-files:
+    README.md
+
+source-repository head
+  type: git
+  location: https://github.com/MinkeVerweij/ModalCorrespondence
+
+library
+  exposed-modules:
+      FOLCorrespondent
+      FOLSimplify
+      Instantiation
+      Languages
+      Lex
+      Main
+      MakeViz
+      ModalSimplify
+      Parse
+      SahlqvistCheck
+      StandTrans
+      Token
+  other-modules:
+      Paths_ModalCorrespondence
+  hs-source-dirs:
+      src
+  ghc-options: -Wall
+  build-tools:
+      alex
+    , happy
+  build-depends:
+      array
+    , base >=4.7 && <5
+    , graphviz
+  default-language: Haskell2010
+
+test-suite examples
+  type: exitcode-stdio-1.0
+  main-is: test/examples.hs
+  other-modules:
+      Paths_ModalCorrespondence
+  ghc-options: -Wall
+  build-tools:
+      alex
+    , happy
+  build-depends:
+      ModalCorrespondence
+    , QuickCheck
+    , array
+    , base >=4.8 && <5
+    , graphviz
+    , hspec
+  default-language: Haskell2010
