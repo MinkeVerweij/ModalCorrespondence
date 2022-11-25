@@ -9,5 +9,5 @@ release: src
 
 src: ../src/*
 	mkdir -p src
-	cp -vr --preserve=all ../src/*.hs ./src/
+	cp -vr --preserve=all ../src/*.hs ../src/*.x ../src/*.y ./src/
 	rm -f ./src/Main.hs
