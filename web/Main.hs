@@ -11,11 +11,11 @@ import Miso.String
 import Language.Javascript.JSaddle.Warp as JSaddle
 #endif
 
--- | Standard imports
+-- Standard imports
 
 -- import Data.GraphViz.Commands -- TODO below!
 
--- | Imports from our own library
+-- Imports from our own library
 import Lex
 import Parse
 import Languages
@@ -33,21 +33,22 @@ runApp :: IO () -> IO ()
 runApp app = app
 #endif
 
--- | Current input string
-type Model = MisoString
+-- | (Current input, currently used string)
+type Model = (MisoString, ModForm)
 
 data Action
-  = NewString MisoString
+  = NoOp
+  | SetInput MisoString
   deriving (Show, Eq)
 
-start :: MisoString
-start = "p -> <><>p"
+start :: Model
+start = ("p -> <><>p", Prp 1) -- FIXME ?
 
 -- | Entry point for a miso application
 main :: IO ()
 main = runApp $ startApp App {..}
   where
-    initialAction = NewString start -- initial action to be executed on application load
+    initialAction = NoOp            -- initial action to be executed on application load
     model  = start                  -- initial model
     update = updateModel            -- update function
     view   = viewModel              -- view function
@@ -58,29 +59,41 @@ main = runApp $ startApp App {..}
 
 -- | Updates model, optionally introduces side effects
 updateModel :: Action -> Model -> Effect Action Model
-updateModel action _ =
+updateModel action m@(oldIS, oldS) =
   case action of
-    NewString s
-      -> noEff s
+    NoOp
+      -> noEff m
+    SetInput newIS
+      -> noEff (newIS, case parseInput (fromMisoString newIS) of
+                          Left _ -> oldS
+                          Right f -> f)
+
+parseInput :: String -> Either String ModForm
+parseInput input =
+  case alexScanTokensSafe input of
+    Left (_,col) -> Left $ "Lex error at position " ++ show col
+    Right tokenList ->
+      case Parse.parse tokenList of
+        Left (_,col) -> Left $ "Parse error at position " ++ show col
+        Right f -> Right f
 
 -- | Constructs a virtual DOM from a model
 viewModel :: Model -> View Action
-viewModel s = div_ [] [
+viewModel (is, f) = div_ [] [
    text "Welcome! Please enter a modal formula here: "
- , input_ [ value_ s, onInput NewString ]
  , br_ []
- , pre_ [] [ text (ms . result . fromMisoString $ s) ]
+ , input_ [ value_ is, onInput SetInput ]
+ , text . ms $ case parseInput (fromMisoString is) of
+                 Left e -> " " ++ e -- TOOD: make error orange
+                 Right _ -> ""
+ , br_ []
+ , pre_ [] [ text (ms $ result f) ]
+ -- TODO: show picture!
  ]
 
 -- adapted from the CLI main
-result :: String -> String
-result input =
-  case alexScanTokensSafe input of
-    Left (line,col) -> "Lex error in line " ++ show line ++ " at column " ++ show col
-    Right tokenList ->
-      case Parse.parse tokenList of
-        Left p -> "error at " ++ show p
-        Right f ->
+result :: ModForm -> String
+result f =
           ("Input: " ++ ppModForm f) -- confirm input
           ++ "\n" ++
           case getSqBxA1 (toModBxA (modSimp f)) of
