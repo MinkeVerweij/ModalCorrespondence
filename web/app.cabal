@@ -25,7 +25,7 @@ executable app
     StandTrans
     Token
   build-depends:
-    array, base, miso
+    array, base, graphviz, miso, temporary, text
   if !impl(ghcjs)
     build-depends:
        jsaddle, jsaddle-warp, transformers, warp, websockets
